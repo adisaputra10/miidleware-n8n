@@ -26,8 +26,8 @@ COPY routes/ ./routes/
 COPY views/ ./views/
 
 # Data directory for SQLite DB (mount a volume here for persistence)
-RUN mkdir -p /usr/src/app/data
-USER root
+RUN mkdir -p /usr/src/app/data && chown -R 100:65533 /usr/src/app
+
 # Remove npm since runtime only needs node — eliminates npm's bundled
 # vulnerable transitive deps (minimatch, tar) from the production image
 RUN rm -rf /usr/local/lib/node_modules/npm \
