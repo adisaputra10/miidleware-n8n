@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspaces — n8n Workspace</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d0d0d; color: #e5e5e5; }
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 220px; flex-shrink: 0; background: #111; border-right: 1px solid #222; display: flex; flex-direction: column; }
+    .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid #1e1e1e; }
+    .logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg,#ff6d5a,#ff4f3b); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .logo-name { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    nav { flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #666; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, color .12s; }
+    .nav-item:hover { background: #1a1a1a; color: #ccc; }
+    .nav-item.active { background: #1e1e1e; color: #fff; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-footer { padding: 10px 8px; border-top: 1px solid #1e1e1e; }
+    .btn-logout-side { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; background: none; border: none; color: #555; font-size: 13px; cursor: pointer; width: 100%; transition: color .12s; }
+    .btn-logout-side:hover { color: #f87171; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { flex-shrink: 0; height: 52px; background: #111; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+    .topbar h1 { font-size: 16px; font-weight: 600; color: #f0f0f0; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── Card grid ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .ws-card { background: #161616; border: 1px solid #222; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: border-color .15s; }
+    .ws-card:hover { border-color: #333; }
+    .ws-card.inactive { opacity: .45; }
+    .ws-name { font-size: 15px; font-weight: 700; color: #f0f0f0; }
+    .ws-desc { font-size: 13px; color: #666; line-height: 1.5; min-height: 18px; }
+    .ws-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ws-id { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #888; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 3px 8px; font-family: monospace; }
+    .ws-actions { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: linear-gradient(135deg,#ff6d5a,#ff4f3b); color: #fff; }
+    .btn-ghost { background: #1e1e1e; border: 1px solid #2e2e2e; color: #aaa; }
+    .btn-blue { background: rgba(99,179,237,.1); border: 1px solid rgba(99,179,237,.2); color: #63b3ed; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-danger { background: #2a1212; border: 1px solid #4a1e1e; color: #f87171; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-active   { background: rgba(34,197,94,.12); color: #4ade80; }
+    .badge-inactive { background: rgba(239,68,68,.12); color: #f87171; }
+
+    /* ── Modals ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 50; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; width: 100%; max-width: 480px; padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,.6); }
+    .modal h2 { font-size: 17px; font-weight: 700; color: #f0f0f0; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: #888; margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 9px 12px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 14px; outline: none; transition: border-color .15s; font-family: inherit; }
+    input:focus, select:focus, textarea:focus { border-color: #ff6d5a; }
+    textarea { resize: vertical; min-height: 70px; }
+    .field-hint { font-size: 11px; color: #555; margin-top: 5px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+    /* ── Workflow iframe modal ── */
+    .wf-modal { background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 14px; width: 95vw; max-width: 1400px; height: 90vh; padding: 0; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.8); overflow: hidden; }
+    .wf-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; background: #111; }
+    .wf-modal-title { font-size: 15px; font-weight: 600; color: #f0f0f0; }
+    .wf-modal-actions { display: flex; align-items: center; gap: 8px; }
+    .wf-modal-frame { flex: 1; border: none; background: #0d0d0d; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 12px 18px; font-size: 13px; color: #e0e0e0; z-index: 200; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none; max-width: 340px; }
+    .toast.show { transform: none; opacity: 1; }
+    .toast.success { border-color: rgba(34,197,94,.4); color: #4ade80; }
+    .toast.error { border-color: rgba(239,68,68,.4); color: #f87171; }
+
+    .empty-state { text-align: center; padding: 64px 24px; color: #444; }
+    .empty-state h3 { font-size: 16px; margin-bottom: 8px; color: #555; }
+    .empty-state p { font-size: 13px; }
+
+    /* Loading skeleton */
+    .skeleton { background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%); background-size: 200%; animation: shimmer 1.4s infinite; border-radius: 8px; height: 16px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg>
+      </div>
+      <span class="logo-name">n8n Workspace</span>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout-side" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Keluar
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>Workspaces</h1>
+      <button class="btn btn-primary" id="addBtn" onclick="openCreate()" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tambah Workspace
+      </button>
+    </div>
+    <div class="content">
+      <div class="grid" id="wsGrid">
+        <div style="color:#444;padding:32px;font-size:13px">Memuat...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal-overlay" id="wsModal">
+  <div class="modal">
+    <h2 id="modalTitle">Tambah Workspace</h2>
+    <div class="form-group">
+      <label>Nama *</label>
+      <input type="text" id="f_name" placeholder="Nama workspace"/>
+    </div>
+    <div class="form-group">
+      <label>Workflow ID / URL *</label>
+      <input type="text" id="f_workflow_id" placeholder="Contoh: KObZZBvO7UjRlWIA atau URL penuh"/>
+      <p class="field-hint">Tempel URL n8n workflow atau ID singkat (contoh: KObZZBvO7UjRlWIA)</p>
+    </div>
+    <div class="form-group">
+      <label>Deskripsi</label>
+      <textarea id="f_description" placeholder="Deskripsi singkat workspace..."></textarea>
+    </div>
+    <div class="form-group" id="statusGroup" style="display:none">
+      <label>Status</label>
+      <select id="f_is_active">
+        <option value="1">Aktif</option>
+        <option value="0">Nonaktif</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('wsModal')">Batal</button>
+      <button class="btn btn-primary" onclick="saveWorkspace()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Open Workflow Modal -->
+<div class="modal-overlay" id="workflowModal">
+  <div class="wf-modal">
+    <div class="wf-modal-header">
+      <span class="wf-modal-title" id="wfModalTitle">Workflow</span>
+      <div class="wf-modal-actions">
+        <a id="wfOpenTab" href="#" target="_blank" class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Buka Tab Baru
+        </a>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('workflowModal')">✕ Tutup</button>
+      </div>
+    </div>
+    <iframe id="workflowFrame" src="" class="wf-modal-frame"></iframe>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let me = null;
+let editingId = null;
+
+async function init() {
+  me = await fetch('/api/me').then(r => r.json());
+  buildNav();
+  if (me.role === 'admin') document.getElementById('addBtn').style.display = '';
+  loadWorkspaces();
+}
+
+function buildNav() {
+  const links = [
+    { href: '/app/dashboard',   label: 'Dashboard',   icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { href: '/app/workspaces',  label: 'Workspaces',  icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
+    { href: '/app/projects',    label: 'Projects',    icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+    me.role === 'admin' ? { href: '/app/users', label: 'Users', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' } : null,
+  ].filter(Boolean);
+  document.getElementById('nav').innerHTML = links.map(l => `
+    <a href="${l.href}" class="nav-item ${location.pathname === l.href ? 'active' : ''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${l.icon}</svg>
+      ${l.label}
+    </a>`).join('');
+}
+
+async function loadWorkspaces() {
+  const list = await fetch('/api/workspaces').then(r => r.json().catch(() => []));
+  const grid = document.getElementById('wsGrid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <h3>Belum ada workspace</h3>
+      <p>${me.role === 'admin' ? 'Klik "Tambah Workspace" untuk menambahkan workflow n8n.' : 'Belum ada workspace yang tersedia.'}</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = list.map(ws => `
+    <div class="ws-card ${ws.is_active ? '' : 'inactive'}">
+      <div>
+        <div class="ws-name">${esc(ws.name || ws.workflow_id)}</div>
+        ${ws.description ? `<div class="ws-desc">${esc(ws.description)}</div>` : ''}
+      </div>
+      <div class="ws-meta">
+        <span class="badge ${ws.is_active ? 'badge-active' : 'badge-inactive'}">${ws.is_active ? 'Aktif' : 'Nonaktif'}</span>
+        <span class="ws-id">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          ${esc(ws.workflow_id)}
+        </span>
+      </div>
+      <div class="ws-actions">
+        <button class="btn btn-blue btn-sm" onclick="openWorkflow('${esc(ws.workflow_id)}', '${esc(ws.name || ws.workflow_id)}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Buka
+        </button>
+        ${me.role === 'admin' ? `
+          <button class="btn btn-ghost btn-sm" onclick="openEdit(${ws.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteWorkspace(${ws.id}, '${esc(ws.name || ws.workflow_id)}')">Hapus</button>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function openWorkflow(workflowId, name) {
+  document.getElementById('wfModalTitle').textContent = name;
+  const url = `/workflow/${workflowId}`;
+  document.getElementById('wfOpenTab').href = url;
+  document.getElementById('workflowFrame').src = url;
+  openModal('workflowModal');
+
+  // Inject CSS to hide n8n native chrome after iframe loads
+  const frame = document.getElementById('workflowFrame');
+  frame.onload = () => {
+    try {
+      const style = frame.contentDocument.createElement('style');
+      style.textContent = `
+        [data-test-id="main-sidebar"],
+        .el-aside,
+        #side-menu,
+        [class*="sidebar"],
+        [data-test-id="workflow-crumbs"],
+        [class*="breadcrumb"],
+        [class*="Breadcrumb"],
+        .ql-toolbar,
+        [data-test-id="workflow-history-toggle"]
+        { display: none !important; }
+        [data-test-id="workflow-editor-layout"] { margin-left: 0 !important; }
+        body > #app > .el-container > .el-main { padding-left: 0 !important; }
+      `;
+      frame.contentDocument.head.appendChild(style);
+    } catch {}
+  };
+}
+
+function openCreate() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Tambah Workspace';
+  document.getElementById('f_name').value = '';
+  document.getElementById('f_workflow_id').value = '';
+  document.getElementById('f_description').value = '';
+  document.getElementById('statusGroup').style.display = 'none';
+  openModal('wsModal');
+}
+
+async function openEdit(id) {
+  const ws = await fetch(`/api/workspaces/${id}`).then(r => r.json());
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit Workspace';
+  document.getElementById('f_name').value = ws.name || '';
+  document.getElementById('f_workflow_id').value = ws.workflow_id || '';
+  document.getElementById('f_description').value = ws.description || '';
+  document.getElementById('statusGroup').style.display = 'block';
+  document.getElementById('f_is_active').value = ws.is_active ? '1' : '0';
+  openModal('wsModal');
+}
+
+async function saveWorkspace() {
+  const body = {
+    name: document.getElementById('f_name').value.trim(),
+    workflow_id: document.getElementById('f_workflow_id').value.trim(),
+    description: document.getElementById('f_description').value.trim(),
+    is_active: Number(document.getElementById('f_is_active')?.value ?? 1),
+  };
+  if (!body.workflow_id) { showToast('Workflow ID wajib diisi', 'error'); return; }
+  const url = editingId ? `/api/workspaces/${editingId}` : '/api/workspaces';
+  const method = editingId ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) { closeModal('wsModal'); loadWorkspaces(); showToast(data.message, 'success'); }
+  else showToast(data.message, 'error');
+}
+
+async function deleteWorkspace(id, name) {
+  if (!confirm(`Hapus workspace "${name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+  const res = await fetch(`/api/workspaces/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (res.ok) { loadWorkspaces(); showToast(data.message, 'success'); }
+  else showToast(data.message, 'error');
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'workflowModal') {
+    document.getElementById('workflowFrame').src = '';
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+});
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  location.href = '/app/login';
+}
+
+init();
+</script>
+</body>
+</html>

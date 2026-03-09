@@ -1,0 +1,480 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>n8n Workspace</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0d0d0d; color: #e5e5e5; overflow: hidden; }
+    .layout { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 220px; flex-shrink: 0; background: #111; border-right: 1px solid #222; display: flex; flex-direction: column; }
+    .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid #1e1e1e; }
+    .logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg,#ff6d5a,#ff4f3b); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .logo-name { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    nav { flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #666; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, color .12s; }
+    .nav-item:hover { background: #1a1a1a; color: #ccc; }
+    .nav-item.active { background: #1e1e1e; color: #fff; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-user { padding: 12px 10px; border-top: 1px solid #1e1e1e; }
+    .user-info { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#ff6d5a,#ff4f3b); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: #ccc; }
+    .user-role { font-size: 11px; color: #555; }
+    .btn-logout-side { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: none; border: none; color: #555; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: color .12s; }
+    .btn-logout-side:hover { color: #f87171; }
+
+    /* ── Main area — two columns when a project is open ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .topbar { flex-shrink: 0; height: 46px; background: #111; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; padding: 0 18px; gap: 10px; }
+    .topbar-title { font-size: 14px; font-weight: 600; color: #f0f0f0; flex: 1; }
+    .body-split { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Project panel (left) ── */
+    .project-panel { width: 300px; flex-shrink: 0; border-right: 1px solid #1e1e1e; background: #0f0f0f; display: flex; flex-direction: column; overflow: hidden; transition: width .25s; }
+    .project-panel.expanded { width: 300px; }
+    .project-panel-header { padding: 14px 16px 10px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; }
+    .project-panel-header h2 { font-size: 13px; font-weight: 600; color: #888; letter-spacing: .04em; text-transform: uppercase; }
+    .panel-count { font-size: 11px; color: #444; background: #1a1a1a; border-radius: 10px; padding: 1px 7px; }
+    .project-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .project-list::-webkit-scrollbar { width: 4px; }
+    .project-list::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+    .proj-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: background .12s, border-color .12s; }
+    .proj-item:hover { background: #181818; }
+    .proj-item.active { background: #1a1a1a; border-color: #2e2e2e; }
+    .proj-item-name { font-size: 13px; font-weight: 600; color: #e0e0e0; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .proj-item.active .proj-item-name { color: #ff8575; }
+    .proj-item-desc { font-size: 11px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .proj-item-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .badge-sm { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; }
+    .badge-active   { background: rgba(34,197,94,.12); color: #4ade80; }
+    .badge-inactive { background: rgba(239,68,68,.12); color: #f87171; }
+    .n8n-badge { font-size: 10px; color: #555; background: #1a1a1a; border-radius: 4px; padding: 1px 5px; font-family: monospace; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Workspace (iframe) panel (right) ── */
+    .workspace { flex: 1; position: relative; overflow: hidden; background: #0d0d0d; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    .overlay { position: absolute; inset: 0; background: #0d0d0d; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 5; transition: opacity .3s; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #222; border-top-color: #ff6d5a; border-radius: 50%; animation: spin .75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .overlay-label { font-size: 13px; color: #555; }
+
+    /* ── Empty / no-selection state ── */
+    .empty-frame { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: #333; text-align: center; padding: 40px; }
+    .empty-frame h3 { font-size: 15px; color: #444; }
+    .empty-frame p { font-size: 13px; }
+
+    /* ── Status dot ── */
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.5); }
+    .status-dot.loading { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+
+    /* ── Loading skeleton ── */
+    .skel { background: linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%); background-size:200%; animation: shimmer 1.4s infinite; border-radius:6px; height:14px; }
+    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg></div>
+      <span class="logo-name">n8n Workspace</span>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div>
+          <div class="user-name" id="userName"></div>
+          <div class="user-role" id="userRole"></div>
+        </div>
+      </div>
+      <button class="btn-logout-side" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Keluar
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="topbar-title" id="topbarTitle">Dashboard</span>
+    </div>
+    <div class="body-split">
+      <!-- Left: project list -->
+      <div class="project-panel" id="projectPanel">
+        <div class="project-panel-header">
+          <h2>Projects</h2>
+          <span class="panel-count" id="panelCount">0</span>
+        </div>
+        <div class="project-list" id="projectList">
+          <div style="padding:20px 12px">
+            <div class="skel" style="width:70%;margin-bottom:8px"></div>
+            <div class="skel" style="width:50%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: n8n iframe -->
+      <div class="workspace">
+        <div class="overlay" id="loadingOverlay" style="display:none">
+          <div class="spinner"></div>
+          <span class="overlay-label">Memuat workflow n8n...</span>
+        </div>
+        <div class="empty-frame" id="emptyFrame">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" width="48" height="48"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          <h3>Pilih project</h3>
+          <p>Klik salah satu project di sebelah kiri untuk membuka workflow-nya.</p>
+        </div>
+        <iframe id="n8nFrame" src="" title="n8n Workflow Editor"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+          referrerpolicy="same-origin" style="display:none"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let me = null;
+let activeProjectId = null;
+
+async function init() {
+  me = await fetch('/api/me').then(r => r.json());
+  document.getElementById('userName').textContent = me.username;
+  document.getElementById('userRole').textContent = me.role.charAt(0).toUpperCase() + me.role.slice(1);
+  document.getElementById('userAvatar').textContent = me.username.charAt(0).toUpperCase();
+  buildNav();
+  loadProjects();
+}
+
+function buildNav() {
+  const links = [
+    { href: '/app/dashboard',  label: 'Dashboard',  icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { href: '/app/workspaces', label: 'Workspaces', icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
+    { href: '/app/projects',   label: 'Projects',   icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+    me.role === 'admin' ? { href: '/app/users', label: 'Users', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' } : null,
+  ].filter(Boolean);
+  document.getElementById('nav').innerHTML = links.map(l => `
+    <a href="${l.href}" class="nav-item ${location.pathname === l.href ? 'active' : ''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${l.icon}</svg>
+      ${l.label}
+    </a>`).join('');
+}
+
+async function loadProjects() {
+  const projects = await fetch('/api/projects').then(r => r.json().catch(() => []));
+  const list = document.getElementById('projectList');
+  const count = document.getElementById('panelCount');
+  count.textContent = projects.length;
+
+  if (!projects.length) {
+    list.innerHTML = `<div style="padding:24px 12px;text-align:center;color:#444;font-size:12px">
+      ${me.role === 'admin' ? 'Buat project baru di halaman <a href="/app/projects" style="color:#ff8575;text-decoration:none">Projects</a>.' : 'Belum ada project yang di-assign ke Anda.'}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = projects.map(p => `
+    <div class="proj-item ${!p.is_active ? 'inactive-item' : ''}" id="proj-${p.id}" onclick="selectProject(${p.id}, '${esc(p.name)}', '${esc(p.workflow_url || '')}', '${esc(p.n8n_project_id || '')}')">
+      <div class="proj-item-name">${esc(p.name)}</div>
+      ${p.description ? `<div class="proj-item-desc">${esc(p.description)}</div>` : ''}
+      <div class="proj-item-meta">
+        <span class="badge-sm ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Aktif' : 'Nonaktif'}</span>
+        ${p.n8n_project_id ? `<span class="n8n-badge" title="n8n project ID">${esc(p.n8n_project_id)}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  // Auto-select first active project
+  const first = projects.find(p => p.is_active);
+  if (first) selectProject(first.id, first.name, first.workflow_url || '', first.n8n_project_id || '');
+}
+
+function selectProject(id, name, workflowUrl, n8nProjectId) {
+  activeProjectId = id;
+  // Highlight active
+  document.querySelectorAll('.proj-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`proj-${id}`);
+  if (el) el.classList.add('active');
+
+  document.getElementById('topbarTitle').textContent = name;
+
+  // Decide what URL to load in iframe
+  let url = workflowUrl;
+  if (!url && n8nProjectId) {
+    // Open n8n project page (shows all workflows in that project)
+    url = `/home/projects/${n8nProjectId}/workflow`;
+  }
+  if (!url) {
+    // No URL configured — show empty state
+    showEmpty();
+    return;
+  }
+  loadFrame(url);
+}
+
+function loadFrame(url) {
+  const frame = document.getElementById('n8nFrame');
+  const overlay = document.getElementById('loadingOverlay');
+  const empty = document.getElementById('emptyFrame');
+
+  empty.style.display = 'none';
+  frame.style.display = 'none';
+  overlay.style.display = 'flex';
+  document.getElementById('statusDot').className = 'status-dot loading';
+
+  frame.src = url;
+  frame.style.display = 'block';
+}
+
+function showEmpty() {
+  document.getElementById('n8nFrame').style.display = 'none';
+  document.getElementById('loadingOverlay').style.display = 'none';
+  document.getElementById('emptyFrame').style.display = 'flex';
+  document.getElementById('statusDot').className = 'status-dot';
+}
+
+document.getElementById('n8nFrame').addEventListener('load', () => {
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.style.opacity = '0';
+  setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = '1'; }, 300);
+  document.getElementById('statusDot').className = 'status-dot';
+  injectN8NSidebarHider();
+});
+
+function injectN8NSidebarHider() {
+  try {
+    const doc = document.getElementById('n8nFrame').contentDocument;
+    if (!doc) return;
+    const id = '__custom_hide_sidebar__';
+    if (doc.getElementById(id)) return;
+    const style = doc.createElement('style');
+    style.id = id;
+    style.textContent = `
+      [data-test-id="main-sidebar"],
+      .el-aside, aside.el-aside, #side-menu, .side-menu, nav.n8n-menu,
+      [class*="sidebar"]:not([class*="right"]):not([class*="Right"]) {
+        display: none !important; width: 0 !important; min-width: 0 !important; overflow: hidden !important;
+      }
+      [data-test-id="workflow-crumbs"],
+      [data-test-id="workflow-name-container"],
+      [data-test-id="project-home-nav"],
+      .breadcrumbs, .n8n-route-breadcrumbs,
+      [class*="breadcrumb"], [class*="Breadcrumb"],
+      [class*="workflowName"], [class*="workflow-name"],
+      [class*="headerBreadcrumbs"], [class*="header-breadcrumbs"] {
+        display: none !important; height: 0 !important; overflow: hidden !important;
+      }
+      .el-main, [class*="main-content"], [class*="mainContent"], [id*="main-content"] {
+        margin-left: 0 !important; padding-left: 0 !important;
+      }
+    `;
+    doc.head.appendChild(style);
+    const observer = new MutationObserver(() => {
+      if (!doc.getElementById(id)) doc.head.appendChild(style);
+    });
+    observer.observe(doc.body, { childList: true, subtree: true });
+  } catch {}
+}
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+async function logout() { await fetch('/api/logout', { method: 'POST' }); location.href = '/app/login'; }
+init();
+</script>
+</body>
+</html>
+    .layout { display: flex; height: 100vh; }
+    .sidebar { width: 220px; flex-shrink: 0; background: #111; border-right: 1px solid #222; display: flex; flex-direction: column; }
+    .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid #1e1e1e; }
+    .logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg,#ff6d5a,#ff4f3b); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .logo-name { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    nav { flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #666; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, color .12s; }
+    .nav-item:hover { background: #1a1a1a; color: #ccc; }
+    .nav-item.active { background: #1e1e1e; color: #fff; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-user { padding: 12px 10px; border-top: 1px solid #1e1e1e; }
+    .user-info { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#ff6d5a,#ff4f3b); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: #ccc; }
+    .user-role { font-size: 11px; color: #555; }
+    .btn-logout-side { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: none; border: none; color: #555; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: color .12s; }
+    .btn-logout-side:hover { color: #f87171; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { flex-shrink: 0; height: 46px; background: #111; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; padding: 0 18px; gap: 10px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.5); }
+    .status-dot.loading { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+    .topbar-label { font-size: 13px; color: #666; }
+    .project-select { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 7px; color: #ccc; font-size: 12px; padding: 5px 10px; outline: none; cursor: pointer; }
+    .project-select:focus { border-color: #ff6d5a; }
+    .workspace { flex: 1; position: relative; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    .overlay { position: absolute; inset: 0; background: #0d0d0d; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 5; transition: opacity .3s; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #222; border-top-color: #ff6d5a; border-radius: 50%; animation: spin .75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .overlay-label { font-size: 13px; color: #555; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg></div>
+      <span class="logo-name">n8n Workspace</span>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div>
+          <div class="user-name" id="userName"></div>
+          <div class="user-role" id="userRole"></div>
+        </div>
+      </div>
+      <button class="btn-logout-side" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Keluar
+      </button>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div class="status-dot loading" id="statusDot"></div>
+      <span class="topbar-label">Workflow</span>
+      <select class="project-select" id="projectSelect" onchange="switchProject(this.value)">
+        <option value="">Pilih Project...</option>
+      </select>
+    </div>
+    <div class="workspace">
+      <div class="overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <span class="overlay-label">Memuat workspace n8n...</span>
+      </div>
+      <iframe id="n8nFrame" src="" title="n8n Workflow Editor"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+        referrerpolicy="same-origin"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+let me = null;
+async function init() {
+  me = await fetch('/api/me').then(r => r.json());
+  document.getElementById('userName').textContent = me.username;
+  document.getElementById('userRole').textContent = me.role.charAt(0).toUpperCase() + me.role.slice(1);
+  document.getElementById('userAvatar').textContent = me.username.charAt(0).toUpperCase();
+  buildNav();
+  loadProjects();
+}
+function buildNav() {
+  const links = [
+    { href: '/app/dashboard',  label: 'Dashboard',  icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { href: '/app/workspaces', label: 'Workspaces', icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
+    { href: '/app/projects',   label: 'Projects',   icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+    me.role === 'admin' ? { href: '/app/users', label: 'Users', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' } : null,
+  ].filter(Boolean);
+  document.getElementById('nav').innerHTML = links.map(l => `
+    <a href="${l.href}" class="nav-item ${location.pathname === l.href ? 'active' : ''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${l.icon}</svg>
+      ${l.label}
+    </a>`).join('');
+}
+async function loadProjects() {
+  const projects = await fetch('/api/projects').then(r => r.json().catch(() => []));
+  const sel = document.getElementById('projectSelect');
+  sel.innerHTML = '<option value="">Pilih Project...</option>' +
+    projects.filter(p => p.is_active && p.workflow_url)
+      .map(p => `<option value="${esc(p.workflow_url)}">${esc(p.name)}</option>`).join('');
+  const first = projects.find(p => p.is_active && p.workflow_url);
+  if (first) { sel.value = first.workflow_url; loadFrame(first.workflow_url); }
+  else loadFrame('/workflow/KObZZBvO7UjRlWIA');
+}
+function switchProject(url) { if (url) loadFrame(url); }
+function loadFrame(url) {
+  const frame = document.getElementById('n8nFrame');
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.style.display = 'flex'; overlay.style.opacity = '1';
+  document.getElementById('statusDot').className = 'status-dot loading';
+  frame.src = url;
+}
+document.getElementById('n8nFrame').addEventListener('load', () => {
+  const o = document.getElementById('loadingOverlay');
+  o.style.opacity = '0'; setTimeout(() => { o.style.display = 'none'; }, 300);
+  document.getElementById('statusDot').className = 'status-dot';
+  injectN8NSidebarHider();
+});
+
+function injectN8NSidebarHider() {
+  try {
+    const doc = document.getElementById('n8nFrame').contentDocument;
+    if (!doc) return;
+    const id = '__custom_hide_sidebar__';
+    if (doc.getElementById(id)) return; // already injected
+    const style = doc.createElement('style');
+    style.id = id;
+    style.textContent = `
+      /* ── Hide left sidebar ── */
+      [data-test-id="main-sidebar"],
+      .el-aside,
+      aside.el-aside,
+      #side-menu,
+      .side-menu,
+      nav.n8n-menu,
+      [class*="sidebar"]:not([class*="right"]):not([class*="Right"]) {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+      }
+
+      /* ── Hide breadcrumb / "Personal" header bar ── */
+      [data-test-id="workflow-crumbs"],
+      [data-test-id="workflow-name-container"],
+      [data-test-id="project-home-nav"],
+      .breadcrumbs,
+      .n8n-route-breadcrumbs,
+      [class*="breadcrumb"],
+      [class*="Breadcrumb"],
+      [class*="workflowName"],
+      [class*="workflow-name"],
+      [class*="headerBreadcrumbs"],
+      [class*="header-breadcrumbs"] {
+        display: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      /* ── Reclaim space so canvas fills full width + height ── */
+      .el-main,
+      [class*="main-content"],
+      [class*="mainContent"],
+      [id*="main-content"] {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+      }
+    `;
+    doc.head.appendChild(style);
+
+    // MutationObserver: keep rules applied if n8n re-renders the DOM
+    const observer = new MutationObserver(() => {
+      if (!doc.getElementById(id)) doc.head.appendChild(style);
+    });
+    observer.observe(doc.body, { childList: true, subtree: true });
+  } catch (e) {
+    // cross-origin guard — silently ignore
+  }
+}
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+async function logout() { await fetch('/api/logout', { method: 'POST' }); location.href = '/app/login'; }
+init();
+</script>
+</body>
+</html>

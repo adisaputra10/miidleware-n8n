@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management — n8n Workspace</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d0d0d; color: #e5e5e5; }
+
+    /* ── Layout ── */
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 220px; flex-shrink: 0; background: #111; border-right: 1px solid #222; display: flex; flex-direction: column; }
+    .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid #1e1e1e; }
+    .logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg,#ff6d5a,#ff4f3b); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .logo-name { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    nav { flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #666; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, color .12s; }
+    .nav-item:hover { background: #1a1a1a; color: #ccc; }
+    .nav-item.active { background: #1e1e1e; color: #fff; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-footer { padding: 10px 8px; border-top: 1px solid #1e1e1e; }
+    .btn-logout-side { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; background: none; border: none; color: #555; font-size: 13px; cursor: pointer; width: 100%; transition: color .12s; }
+    .btn-logout-side:hover { color: #f87171; }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { flex-shrink: 0; height: 52px; background: #111; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+    .topbar h1 { font-size: 16px; font-weight: 600; color: #f0f0f0; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── Card ── */
+    .card { background: #161616; border: 1px solid #222; border-radius: 12px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #1e1e1e; }
+    .card-title { font-size: 14px; font-weight: 600; color: #e0e0e0; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: linear-gradient(135deg,#ff6d5a,#ff4f3b); color: #fff; }
+    .btn-ghost { background: #1e1e1e; border: 1px solid #2e2e2e; color: #aaa; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-danger { background: #2a1212; border: 1px solid #4a1e1e; color: #f87171; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #1e1e1e; }
+    td { padding: 12px 16px; font-size: 13px; color: #ccc; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #181818; }
+
+    /* ── Badge ── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-admin  { background: rgba(255,109,90,.15); color: #ff8575; }
+    .badge-editor { background: rgba(99,179,237,.15); color: #63b3ed; }
+    .badge-viewer { background: rgba(107,114,128,.15); color: #9ca3af; }
+    .badge-active   { background: rgba(34,197,94,.12); color: #4ade80; }
+    .badge-inactive { background: rgba(239,68,68,.12); color: #f87171; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 50; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; width: 100%; max-width: 480px; padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,.6); }
+    .modal h2 { font-size: 17px; font-weight: 700; color: #f0f0f0; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: #888; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 9px 12px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 14px; outline: none; transition: border-color .15s; }
+    input:focus, select:focus { border-color: #ff6d5a; }
+    select option { background: #1e1e1e; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 12px 18px; font-size: 13px; color: #e0e0e0; z-index: 100; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none; }
+    .toast.show { transform: none; opacity: 1; }
+    .toast.success { border-color: rgba(34,197,94,.4); color: #4ade80; }
+    .toast.error { border-color: rgba(239,68,68,.4); color: #f87171; }
+
+    /* ── Projects assign modal ── */
+    .project-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .project-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #1a1a1a; border-radius: 8px; font-size: 13px; color: #ccc; cursor: pointer; border: 1px solid transparent; transition: border-color .15s; }
+    .project-item.selected { border-color: #ff6d5a; background: rgba(255,109,90,.06); color: #fff; }
+    .project-item input[type=checkbox] { accent-color: #ff6d5a; width: 15px; height: 15px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg>
+      </div>
+      <span class="logo-name">n8n Workspace</span>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout-side" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Keluar
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <h1>User Management</h1>
+      <button class="btn btn-primary" onclick="openCreate()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tambah User
+      </button>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Daftar User</span>
+          <span id="userCount" style="font-size:12px;color:#555"></span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Nama Lengkap</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Dibuat</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="userTable">
+            <tr><td colspan="7" style="text-align:center;color:#444;padding:32px">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <h2 id="modalTitle">Tambah User</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Username *</label>
+        <input type="text" id="f_username" placeholder="username" autocomplete="off"/>
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="f_role_id"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nama Lengkap</label>
+        <input type="text" id="f_full_name" placeholder="Nama lengkap"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="f_email" placeholder="email@contoh.com"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label id="passLabel">Password *</label>
+      <input type="password" id="f_password" placeholder="Password" autocomplete="new-password"/>
+    </div>
+    <div class="form-group" id="statusGroup" style="display:none">
+      <label>Status</label>
+      <select id="f_is_active">
+        <option value="1">Aktif</option>
+        <option value="0">Nonaktif</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('userModal')">Batal</button>
+      <button class="btn btn-primary" onclick="saveUser()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Projects Modal -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <h2>Assign Project ke <span id="assignUsername"></span></h2>
+    <p style="font-size:13px;color:#666;margin-bottom:14px">Pilih project yang dapat diakses user ini:</p>
+    <div class="project-list" id="projectList"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('projectModal')">Batal</button>
+      <button class="btn btn-primary" onclick="saveProjects()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let me = null;
+let editingId = null;
+let assigningUserId = null;
+let allProjects = [];
+let roles = [];
+
+async function init() {
+  me = await fetch('/api/me').then(r => r.json());
+  roles = await fetch('/api/roles').then(r => r.json());
+  buildNav();
+  loadUsers();
+}
+
+function buildNav() {
+  const links = [
+    { href: '/app/dashboard',  label: 'Dashboard',  icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { href: '/app/workspaces', label: 'Workspaces', icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
+    { href: '/app/projects',   label: 'Projects',   icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+    { href: '/app/users',      label: 'Users',      icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+  ];
+  const nav = document.getElementById('nav');
+  nav.innerHTML = links.map(l => `
+    <a href="${l.href}" class="nav-item ${location.pathname === l.href ? 'active' : ''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${l.icon}</svg>
+      ${l.label}
+    </a>
+  `).join('');
+}
+
+async function loadUsers() {
+  const users = await fetch('/api/users').then(r => r.json().catch(() => []));
+  const tbody = document.getElementById('userTable');
+  document.getElementById('userCount').textContent = `${users.length} user`;
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#444;padding:32px">Belum ada user</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong style="color:#f0f0f0">${esc(u.username)}</strong></td>
+      <td>${esc(u.full_name) || '<span style="color:#444">—</span>'}</td>
+      <td>${esc(u.email) || '<span style="color:#444">—</span>'}</td>
+      <td><span class="badge badge-${u.role_name}">${esc(u.role_label)}</span></td>
+      <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td style="color:#555;font-size:12px">${u.created_at.slice(0,10)}</td>
+      <td>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="openAssign(${u.id}, '${esc(u.username)}')">Assign Project</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEdit(${u.id})">Edit</button>
+          ${u.id !== me?.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${esc(u.username)}')">Hapus</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openCreate() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Tambah User';
+  document.getElementById('f_username').value = '';
+  document.getElementById('f_username').disabled = false;
+  document.getElementById('f_full_name').value = '';
+  document.getElementById('f_email').value = '';
+  document.getElementById('f_password').value = '';
+  document.getElementById('passLabel').textContent = 'Password *';
+  document.getElementById('statusGroup').style.display = 'none';
+  fillRoleSelect(1);
+  openModal('userModal');
+}
+
+async function openEdit(id) {
+  const user = await fetch(`/api/users/${id}`).then(r => r.json());
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit User';
+  document.getElementById('f_username').value = user.username;
+  document.getElementById('f_username').disabled = true;
+  document.getElementById('f_full_name').value = user.full_name || '';
+  document.getElementById('f_email').value = user.email || '';
+  document.getElementById('f_password').value = '';
+  document.getElementById('passLabel').textContent = 'Password (kosongkan jika tidak diubah)';
+  document.getElementById('statusGroup').style.display = 'block';
+  document.getElementById('f_is_active').value = user.is_active ? '1' : '0';
+  fillRoleSelect(user.role_id);
+  openModal('userModal');
+}
+
+function fillRoleSelect(selected) {
+  const s = document.getElementById('f_role_id');
+  s.innerHTML = roles.map(r => `<option value="${r.id}" ${r.id === selected ? 'selected' : ''}>${r.label}</option>`).join('');
+}
+
+async function saveUser() {
+  const body = {
+    username: document.getElementById('f_username').value.trim(),
+    full_name: document.getElementById('f_full_name').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    password: document.getElementById('f_password').value,
+    role_id: document.getElementById('f_role_id').value,
+    is_active: document.getElementById('f_is_active').value,
+  };
+  const url = editingId ? `/api/users/${editingId}` : '/api/users';
+  const method = editingId ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) {
+    closeModal('userModal');
+    loadUsers();
+    showToast(data.message, 'success');
+  } else {
+    showToast(data.message, 'error');
+  }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`Hapus user "${username}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+  const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (res.ok) { loadUsers(); showToast(data.message, 'success'); }
+  else showToast(data.message, 'error');
+}
+
+async function openAssign(userId, username) {
+  assigningUserId = userId;
+  document.getElementById('assignUsername').textContent = username;
+  allProjects = await fetch('/api/projects').then(r => r.json());
+  const assigned = await fetch(`/api/users/${userId}/projects`).then(r => r.json());
+  const assignedIds = new Set(assigned.map(p => p.id));
+  const list = document.getElementById('projectList');
+  if (!allProjects.length) {
+    list.innerHTML = '<p style="color:#555;font-size:13px;padding:8px">Belum ada project. Buat project dulu di halaman Projects.</p>';
+  } else {
+    list.innerHTML = allProjects.map(p => `
+      <label class="project-item ${assignedIds.has(p.id) ? 'selected' : ''}" id="pi_${p.id}">
+        <input type="checkbox" value="${p.id}" ${assignedIds.has(p.id) ? 'checked' : ''}
+          onchange="toggleProjectItem(this)">
+        <span>${esc(p.name)}</span>
+        ${p.workflow_url ? `<span style="font-size:11px;color:#555;margin-left:auto">${esc(p.workflow_url.slice(0,30))}...</span>` : ''}
+      </label>
+    `).join('');
+  }
+  openModal('projectModal');
+}
+
+function toggleProjectItem(cb) {
+  document.getElementById(`pi_${cb.value}`).classList.toggle('selected', cb.checked);
+}
+
+async function saveProjects() {
+  const checked = [...document.querySelectorAll('#projectList input[type=checkbox]:checked')].map(c => Number(c.value));
+  const res = await fetch(`/api/users/${assigningUserId}/projects`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project_ids: checked })
+  });
+  const data = await res.json();
+  closeModal('projectModal');
+  showToast(data.message, res.ok ? 'success' : 'error');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  location.href = '/app/login';
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+init();
+</script>
+</body>
+</html>
