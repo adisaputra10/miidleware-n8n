@@ -24,7 +24,12 @@ try { db.exec(`ALTER TABLE projects ADD COLUMN n8n_login_password TEXT NOT NULL 
 // SSO config migration for show_login_button
 try { db.exec(`ALTER TABLE sso_config ADD COLUMN show_login_button INTEGER NOT NULL DEFAULT 1`); } catch {}
 
-// Backfill: assign all existing users to all existing projects (one-time, safe due to INSERT OR IGNORE)
+// SSO config migration for per-provider enabled flags
+try { db.exec(`ALTER TABLE sso_config ADD COLUMN azure_enabled INTEGER NOT NULL DEFAULT 1`); } catch {}
+try { db.exec(`ALTER TABLE sso_config ADD COLUMN google_enabled INTEGER NOT NULL DEFAULT 1`); } catch {}
+try { db.exec(`ALTER TABLE sso_config ADD COLUMN github_enabled INTEGER NOT NULL DEFAULT 1`); } catch {}
+try { db.exec(`ALTER TABLE sso_config ADD COLUMN okta_enabled INTEGER NOT NULL DEFAULT 1`); } catch {}
+try { db.exec(`ALTER TABLE sso_config ADD COLUMN custom_oidc_enabled INTEGER NOT NULL DEFAULT 1`); } catch {}
 try {
   db.exec(`
     INSERT OR IGNORE INTO user_projects (user_id, project_id)
@@ -96,6 +101,11 @@ db.exec(`
     tenant_id           TEXT    NOT NULL DEFAULT '',
     issuer_url          TEXT    NOT NULL DEFAULT '',
     app_url             TEXT    NOT NULL DEFAULT '',
+    azure_enabled       INTEGER NOT NULL DEFAULT 1,
+    google_enabled      INTEGER NOT NULL DEFAULT 1,
+    github_enabled      INTEGER NOT NULL DEFAULT 1,
+    okta_enabled        INTEGER NOT NULL DEFAULT 1,
+    custom_oidc_enabled INTEGER NOT NULL DEFAULT 1,
     updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 `);
@@ -343,18 +353,21 @@ const SsoConfig = {
     return db.prepare(`SELECT * FROM sso_config WHERE id = 1`).get() || {
       id: 1, enabled: 0, show_login_button: 1, provider: 'custom_oidc',
       client_id: '', client_secret: '', tenant_id: '', issuer_url: '', app_url: '',
+      azure_enabled: 1, google_enabled: 1, github_enabled: 1, okta_enabled: 1, custom_oidc_enabled: 1,
     };
   },
-  save({ enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url }) {
+  save({ enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url, azure_enabled, google_enabled, github_enabled, okta_enabled, custom_oidc_enabled }) {
     db.prepare(`
-      INSERT INTO sso_config (id, enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url, updated_at)
-      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO sso_config (id, enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url, azure_enabled, google_enabled, github_enabled, okta_enabled, custom_oidc_enabled, updated_at)
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         enabled=excluded.enabled, show_login_button=excluded.show_login_button, provider=excluded.provider,
         client_id=excluded.client_id, client_secret=excluded.client_secret,
-        tenant_id=excluded.tenant_id, issuer_url=excluded.issuer_url,
-        app_url=excluded.app_url, updated_at=excluded.updated_at
-    `).run(enabled ? 1 : 0, show_login_button ? 1 : 0, provider, client_id, client_secret, tenant_id, issuer_url, app_url);
+        tenant_id=excluded.tenant_id, issuer_url=excluded.issuer_url, app_url=excluded.app_url,
+        azure_enabled=excluded.azure_enabled, google_enabled=excluded.google_enabled,
+        github_enabled=excluded.github_enabled, okta_enabled=excluded.okta_enabled,
+        custom_oidc_enabled=excluded.custom_oidc_enabled, updated_at=excluded.updated_at
+    `).run(enabled ? 1 : 0, show_login_button ? 1 : 0, provider, client_id, client_secret, tenant_id, issuer_url, app_url, azure_enabled ? 1 : 0, google_enabled ? 1 : 0, github_enabled ? 1 : 0, okta_enabled ? 1 : 0, custom_oidc_enabled ? 1 : 0);
   },
 };
 

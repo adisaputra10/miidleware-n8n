@@ -137,7 +137,7 @@
     }
 
     .sso-btn {
-      display: none;
+      display: inline-flex;
       width: 100%;
       margin-top: 10px;
       padding: 11px 14px;
@@ -156,6 +156,9 @@
     .sso-btn:hover { background: #f8f8f8; box-shadow: 0 1px 6px rgba(0,0,0,.15); }
     .sso-btn:disabled { opacity: .5; cursor: not-allowed; }
     .sso-btn svg { flex-shrink: 0; }
+    
+    .sso-buttons-container { display: none; }
+    .sso-buttons-container.show { display: block; }
     .divider-or {
       display: flex;
       align-items: center;
@@ -215,16 +218,7 @@
     </form>
 
     <div class="divider-or" id="ssoSeparator" style="display:none">atau</div>
-    <button class="sso-btn" id="ssoBtn" onclick="window.location.href='/auth/sso'" style="display:none">
-      <svg id="ssoIcon" width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
-        <!-- Default: Microsoft logo -->
-        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-      </svg>
-      <span id="ssoLabel">Masuk dengan Microsoft</span>
-    </button>
+    <div id="ssoButtonsContainer" class="sso-buttons-container"></div>
 
     <div class="divider"></div>
     <p class="hint">Username: <code>admin</code> &nbsp;·&nbsp; Password: <code>admin123</code></p>
@@ -235,7 +229,7 @@
     const submitBtn = document.getElementById('submitBtn');
     const errorBox = document.getElementById('errorBox');
 
-    // Provider icons and labels
+    // Provider icons
     const providerIcons = {
       azure: '<rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/>',
       google: '<circle cx="10.5" cy="10.5" r="8.5" fill="none" stroke="#4285F4" stroke-width="1.5"/><text x="10.5" y="12" text-anchor="middle" font-size="7" font-weight="bold" fill="#4285F4">G</text>',
@@ -244,26 +238,33 @@
       custom_oidc: '<circle cx="10.5" cy="10.5" r="8.5" fill="none" stroke="#999" stroke-width="1.5"/><text x="10.5" y="13" text-anchor="middle" font-size="8" font-weight="bold" fill="#999">⊙</text>',
     };
 
-    const providerLabels = {
-      azure: 'Microsoft',
-      google: 'Google',
-      github: 'GitHub',
-      okta: 'Okta',
-      custom_oidc: 'SSO',
-    };
-
     // Show SSO button if backend has OIDC configured
     fetch('/api/sso-status').then(r => r.json()).then(data => {
-      if (data.enabled) {
-        const provider = data.provider || 'azure';
-        const label = data.label || providerLabels[provider] || 'SSO';
-        document.getElementById('ssoLabel').textContent = 'Masuk dengan ' + label;
+      if (data.enabled && data.availableProviders && data.availableProviders.length > 0) {
+        const container = document.getElementById('ssoButtonsContainer');
         
-        // Update icon
-        const iconSvg = document.getElementById('ssoIcon');
-        iconSvg.innerHTML = providerIcons[provider] || providerIcons.azure;
+        // Render buttons for each available provider
+        data.availableProviders.forEach(p => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'sso-btn';
+          btn.onclick = () => window.location.href = '/auth/sso';
+          
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', '20');
+          svg.setAttribute('height', '20');
+          svg.setAttribute('viewBox', '0 0 21 21');
+          svg.innerHTML = providerIcons[p.provider] || providerIcons.azure;
+          
+          const label = document.createElement('span');
+          label.textContent = 'Masuk dengan ' + p.label;
+          
+          btn.appendChild(svg);
+          btn.appendChild(label);
+          container.appendChild(btn);
+        });
         
-        document.getElementById('ssoBtn').style.display = 'flex';
+        container.classList.add('show');
         document.getElementById('ssoSeparator').style.display = 'flex';
       }
     }).catch(() => {});

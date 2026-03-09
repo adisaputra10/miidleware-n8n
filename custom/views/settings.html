@@ -67,6 +67,24 @@
     .toggle input:checked + .toggle-slider { background: rgba(255,109,90,.2); }
     .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: #ff6d5a; }
 
+    /* ── Radio options ── */
+    .radio-group { display: flex; gap: 12px; margin: 12px 0; }
+    .radio-option { flex: 1; }
+    .radio-option input { display: none; }
+    .radio-option label { display: flex; align-items: center; gap: 8px; padding: 11px 14px; background: #1e1e1e; border: 2px solid #2e2e2e; border-radius: 8px; cursor: pointer; transition: all .15s; }
+    .radio-option input:checked + label { background: rgba(255,109,90,.1); border-color: #ff6d5a; color: #ff8575; }
+    .radio-label-text { font-size: 14px; font-weight: 600; }
+    .radio-label-sub { font-size: 12px; color: #666; }
+
+    /* ── Provider toggle items ── */
+    .provider-toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 12px 0; }
+    .provider-toggle-item { display: flex; align-items: center; gap: 8px; padding: 10px; background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 8px; }
+    .provider-toggle-item input { width: 16px; height: 16px; cursor: pointer; }
+    .provider-toggle-item label { display: flex; align-items: center; cursor: pointer; flex: 1; }
+    .toggle-name { font-size: 13px; font-weight: 500; color: #ccc; }
+    .provider-toggle-item input:checked + label .toggle-name { color: #ff8575; font-weight: 600; }
+    .provider-toggle-item input:checked ~ * { color: #ff8575; }
+
     /* ── Provider tabs ── */
     .provider-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
     .ptab { flex: 1; padding: 10px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 9px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
@@ -153,16 +171,29 @@
           </label>
         </div>
 
-        <!-- Show login button toggle -->
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Tampilkan tombol SSO</div>
-            <div class="toggle-sub">Tampilkan tombol "Masuk dengan [Provider]" di halaman login</div>
+        <!-- Show login button options -->
+        <div class="field">
+          <label>Tombol SSO di Halaman Login</label>
+          <div class="radio-group">
+            <div class="radio-option">
+              <input type="radio" id="btnEnable" name="ssoShowButton" value="1" />
+              <label for="btnEnable">
+                <div>
+                  <div class="radio-label-text">✓ Enable</div>
+                  <div class="radio-label-sub">Tampilkan tombol SSO</div>
+                </div>
+              </label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="btnDisable" name="ssoShowButton" value="0" />
+              <label for="btnDisable">
+                <div>
+                  <div class="radio-label-text">✗ Disable</div>
+                  <div class="radio-label-sub">Sembunyikan tombol SSO</div>
+                </div>
+              </label>
+            </div>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="ssoShowButton" />
-            <span class="toggle-slider"></span>
-          </label>
         </div>
 
         <!-- Provider selector -->
@@ -188,6 +219,43 @@
             <div class="ptab" id="ptabCustomOidc" onclick="selectProvider('custom_oidc')">
               <div class="ptab-name">Custom OIDC</div>
               <div class="ptab-sub">Keycloak, Authentik, dll</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enabled providers -->
+        <div class="field">
+          <label>Aktifkan Provider di Halaman Login</label>
+          <div class="provider-toggles">
+            <div class="provider-toggle-item">
+              <input type="checkbox" id="azureEnabled" />
+              <label for="azureEnabled">
+                <span class="toggle-name">Azure (Microsoft)</span>
+              </label>
+            </div>
+            <div class="provider-toggle-item">
+              <input type="checkbox" id="googleEnabled" />
+              <label for="googleEnabled">
+                <span class="toggle-name">Google</span>
+              </label>
+            </div>
+            <div class="provider-toggle-item">
+              <input type="checkbox" id="githubEnabled" />
+              <label for="githubEnabled">
+                <span class="toggle-name">GitHub</span>
+              </label>
+            </div>
+            <div class="provider-toggle-item">
+              <input type="checkbox" id="oktaEnabled" />
+              <label for="oktaEnabled">
+                <span class="toggle-name">Okta</span>
+              </label>
+            </div>
+            <div class="provider-toggle-item">
+              <input type="checkbox" id="customOidcEnabled" />
+              <label for="customOidcEnabled">
+                <span class="toggle-name">Custom OIDC</span>
+              </label>
             </div>
           </div>
         </div>
@@ -308,7 +376,21 @@ function buildNav() {
 async function loadSsoConfig() {
   const cfg = await fetch('/api/settings/sso').then(r => r.json());
   document.getElementById('ssoEnabled').checked = !!cfg.enabled;
-  document.getElementById('ssoShowButton').checked = !!cfg.show_login_button;
+  
+  // Set radio buttons based on show_login_button value
+  if (cfg.show_login_button) {
+    document.getElementById('btnEnable').checked = true;
+  } else {
+    document.getElementById('btnDisable').checked = true;
+  }
+  
+  // Set provider-specific enabled checkboxes
+  document.getElementById('azureEnabled').checked = !!cfg.azure_enabled;
+  document.getElementById('googleEnabled').checked = !!cfg.google_enabled;
+  document.getElementById('githubEnabled').checked = !!cfg.github_enabled;
+  document.getElementById('oktaEnabled').checked = !!cfg.okta_enabled;
+  document.getElementById('customOidcEnabled').checked = !!cfg.custom_oidc_enabled;
+  
   document.getElementById('clientId').value     = cfg.client_id      || '';
   document.getElementById('tenantId').value     = cfg.tenant_id      || '';
   document.getElementById('issuerUrl').value    = cfg.issuer_url     || '';
@@ -376,14 +458,19 @@ async function saveSso() {
   document.getElementById('alertBox').style.display = 'none';
   try {
     const body = {
-      enabled:           document.getElementById('ssoEnabled').checked,
-      show_login_button: document.getElementById('ssoShowButton').checked,
-      provider:          currentProvider,
-      client_id:         document.getElementById('clientId').value.trim(),
-      client_secret:     document.getElementById('clientSecret').value,
-      tenant_id:         document.getElementById('tenantId').value.trim() || undefined,
-      issuer_url:        document.getElementById('issuerUrl').value.trim() || undefined,
-      app_url:           document.getElementById('appUrl').value.trim(),
+      enabled:             document.getElementById('ssoEnabled').checked,
+      show_login_button:   document.querySelector('input[name="ssoShowButton"]:checked')?.value === '1',
+      provider:            currentProvider,
+      client_id:           document.getElementById('clientId').value.trim(),
+      client_secret:       document.getElementById('clientSecret').value,
+      tenant_id:           document.getElementById('tenantId').value.trim() || undefined,
+      issuer_url:          document.getElementById('issuerUrl').value.trim() || undefined,
+      app_url:             document.getElementById('appUrl').value.trim(),
+      azure_enabled:       document.getElementById('azureEnabled').checked,
+      google_enabled:      document.getElementById('googleEnabled').checked,
+      github_enabled:      document.getElementById('githubEnabled').checked,
+      okta_enabled:        document.getElementById('oktaEnabled').checked,
+      custom_oidc_enabled: document.getElementById('customOidcEnabled').checked,
     };
     const res = await fetch('/api/settings/sso', {
       method: 'PUT',

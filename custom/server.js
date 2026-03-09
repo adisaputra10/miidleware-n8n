@@ -182,11 +182,22 @@ const providerLabels = {
 };
 app.get('/api/sso-status', (req, res) => {
   const cfg = SsoConfig.get();
-  const shouldShow = !!cfg.enabled && !!cfg.show_login_button;
+  const baseEnabled = !!cfg.enabled && !!cfg.show_login_button;
+  
+  // Filter available providers based on their enabled status
+  const availableProviders = [];
+  if (baseEnabled) {
+    if (cfg.azure_enabled) availableProviders.push({ provider: 'azure', label: 'Microsoft' });
+    if (cfg.google_enabled) availableProviders.push({ provider: 'google', label: 'Google' });
+    if (cfg.github_enabled) availableProviders.push({ provider: 'github', label: 'GitHub' });
+    if (cfg.okta_enabled) availableProviders.push({ provider: 'okta', label: 'Okta' });
+    if (cfg.custom_oidc_enabled) availableProviders.push({ provider: 'custom_oidc', label: 'SSO' });
+  }
+  
   res.json({
-    enabled: shouldShow,
-    provider: cfg.provider,
-    label: providerLabels[cfg.provider] || 'SSO',
+    enabled: baseEnabled,
+    availableProviders: availableProviders,
+    selectedProvider: cfg.provider,
   });
 });
 
@@ -263,11 +274,16 @@ app.get('/api/settings/sso', requireAuth, adminOnly, (req, res) => {
     issuer_url:        cfg.issuer_url,
     app_url:           cfg.app_url,
     has_secret:        !!cfg.client_secret,
+    azure_enabled:     !!cfg.azure_enabled,
+    google_enabled:    !!cfg.google_enabled,
+    github_enabled:    !!cfg.github_enabled,
+    okta_enabled:      !!cfg.okta_enabled,
+    custom_oidc_enabled: !!cfg.custom_oidc_enabled,
   });
 });
 
 app.put('/api/settings/sso', requireAuth, adminOnly, async (req, res) => {
-  const { enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url } = req.body;
+  const { enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url, azure_enabled, google_enabled, github_enabled, okta_enabled, custom_oidc_enabled } = req.body;
   // If client_secret left blank, keep existing secret
   const existing = SsoConfig.get();
   SsoConfig.save({
@@ -279,6 +295,11 @@ app.put('/api/settings/sso', requireAuth, adminOnly, async (req, res) => {
     tenant_id:         tenant_id     || '',
     issuer_url:        issuer_url    || '',
     app_url:           app_url       || '',
+    azure_enabled:     azure_enabled !== undefined ? !!azure_enabled : !!existing.azure_enabled,
+    google_enabled:    google_enabled !== undefined ? !!google_enabled : !!existing.google_enabled,
+    github_enabled:    github_enabled !== undefined ? !!github_enabled : !!existing.github_enabled,
+    okta_enabled:      okta_enabled !== undefined ? !!okta_enabled : !!existing.okta_enabled,
+    custom_oidc_enabled: custom_oidc_enabled !== undefined ? !!custom_oidc_enabled : !!existing.custom_oidc_enabled,
   });
   // Re-initialize OIDC with new settings
   await initOIDC();
