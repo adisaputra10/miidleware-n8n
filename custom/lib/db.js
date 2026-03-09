@@ -4,7 +4,7 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'app.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'app.db');
 
 // Ensure data directory exists
 const fs = require('fs');
@@ -18,7 +18,20 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 // ─── Runtime migrations (add new columns if upgrading existing DB) ──────────
-try { db.exec(`ALTER TABLE projects ADD COLUMN n8n_project_id TEXT NOT NULL DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE projects ADD COLUMN n8n_login_email TEXT NOT NULL DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE projects ADD COLUMN n8n_login_password TEXT NOT NULL DEFAULT ''`); } catch {}
+
+// SSO config migration for show_login_button
+try { db.exec(`ALTER TABLE sso_config ADD COLUMN show_login_button INTEGER NOT NULL DEFAULT 1`); } catch {}
+
+// Backfill: assign all existing users to all existing projects (one-time, safe due to INSERT OR IGNORE)
+try {
+  db.exec(`
+    INSERT OR IGNORE INTO user_projects (user_id, project_id)
+    SELECT u.id, p.id FROM users u CROSS JOIN projects p
+    WHERE u.is_active = 1 AND p.is_active = 1
+  `);
+} catch {}
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 db.exec(`
@@ -43,14 +56,16 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS projects (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT    NOT NULL,
-    description     TEXT    NOT NULL DEFAULT '',
-    workflow_url    TEXT    NOT NULL DEFAULT '',
-    n8n_project_id  TEXT    NOT NULL DEFAULT '',
-    is_active       INTEGER NOT NULL DEFAULT 1,
-    created_at      TEXT   NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT   NOT NULL DEFAULT (datetime('now'))
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    name               TEXT    NOT NULL,
+    description        TEXT    NOT NULL DEFAULT '',
+    workflow_url       TEXT    NOT NULL DEFAULT '',
+    n8n_project_id     TEXT    NOT NULL DEFAULT '',
+    n8n_login_email    TEXT    NOT NULL DEFAULT '',
+    n8n_login_password TEXT    NOT NULL DEFAULT '',
+    is_active          INTEGER NOT NULL DEFAULT 1,
+    created_at         TEXT   NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT   NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS user_projects (
@@ -69,6 +84,19 @@ db.exec(`
     is_active    INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS sso_config (
+    id                  INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled             INTEGER NOT NULL DEFAULT 0,
+    show_login_button   INTEGER NOT NULL DEFAULT 1,
+    provider            TEXT    NOT NULL DEFAULT 'custom_oidc',
+    client_id           TEXT    NOT NULL DEFAULT '',
+    client_secret       TEXT    NOT NULL DEFAULT '',
+    tenant_id           TEXT    NOT NULL DEFAULT '',
+    issuer_url          TEXT    NOT NULL DEFAULT '',
+    app_url             TEXT    NOT NULL DEFAULT '',
+    updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 `);
 
@@ -119,6 +147,13 @@ const Users = {
       WHERE u.username = ?
     `).get(username);
   },
+  getByEmail(email) {
+    return db.prepare(`
+      SELECT u.*, r.name AS role_name
+      FROM users u JOIN roles r ON r.id = u.role_id
+      WHERE lower(u.email) = lower(?) AND u.is_active = 1
+    `).get(email);
+  },
   create({ username, password, full_name, email, role_id }) {
     const hash = bcrypt.hashSync(password, 10);
     const info = db.prepare(`
@@ -165,6 +200,13 @@ const Users = {
     });
     tx(projectIds);
   },
+  // Assign a new user to all existing active projects
+  assignToAllProjects(userId) {
+    const projects = db.prepare(`SELECT id FROM projects WHERE is_active = 1`).all();
+    const ins = db.prepare(`INSERT OR IGNORE INTO user_projects (user_id, project_id) VALUES (?, ?)`);
+    const tx = db.transaction(() => projects.forEach(p => ins.run(userId, p.id)));
+    tx();
+  },
 };
 
 const Roles = {
@@ -195,6 +237,10 @@ const Projects = {
     db.prepare(`UPDATE projects SET n8n_project_id=?, updated_at=datetime('now') WHERE id=?`)
       .run(n8n_project_id, id);
   },
+  setN8NCredentials(id, email, password) {
+    db.prepare(`UPDATE projects SET n8n_login_email=?, n8n_login_password=?, updated_at=datetime('now') WHERE id=?`)
+      .run(email, password, id);
+  },
   getByN8NProjectId(n8n_project_id) {
     return db.prepare(`SELECT * FROM projects WHERE n8n_project_id = ?`).get(n8n_project_id);
   },
@@ -209,12 +255,47 @@ const Projects = {
   },
   getMembers(projectId) {
     return db.prepare(`
-      SELECT u.id, u.username, u.full_name, u.email, r.label AS role_label
+      SELECT u.id, u.username, u.full_name, u.email, r.label AS role_label, u.is_active
       FROM users u
       JOIN user_projects up ON up.user_id = u.id
       JOIN roles r ON r.id = u.role_id
       WHERE up.project_id = ?
     `).all(projectId);
+  },
+  setMembers(projectId, userIds) {
+    // Keep n8n-only users (is_active=0) always assigned; only manage active users
+    const del = db.prepare(`DELETE FROM user_projects WHERE project_id = ? AND user_id IN (SELECT id FROM users WHERE is_active = 1)`);
+    const ins = db.prepare(`INSERT OR IGNORE INTO user_projects (user_id, project_id) VALUES (?, ?)`);
+    const tx = db.transaction(() => {
+      del.run(projectId);
+      userIds.forEach(uid => ins.run(uid, projectId));
+    });
+    tx();
+  },
+  // Assign every existing user to a project
+  assignAllUsers(projectId) {
+    const users = db.prepare(`SELECT id FROM users WHERE is_active = 1`).all();
+    const ins = db.prepare(`INSERT OR IGNORE INTO user_projects (user_id, project_id) VALUES (?, ?)`);
+    const tx = db.transaction(() => users.forEach(u => ins.run(u.id, projectId)));
+    tx();
+  },
+  // Create a local placeholder for an n8n-only user (is_active=0 → cannot login to custom app)
+  createN8NUser({ username, full_name, email }) {
+    // Use a random unsalted placeholder — user can never login (is_active = 0)
+    const placeholder = Math.random().toString(36);
+    try {
+      const info = db.prepare(`
+        INSERT INTO users (username, password, full_name, email, role_id, is_active)
+        VALUES (?, ?, ?, ?, (SELECT id FROM roles WHERE name='viewer'), 0)
+      `).run(username, placeholder, full_name || '', email || '');
+      return info.lastInsertRowid;
+    } catch {
+      // username already exists — return existing id
+      return db.prepare(`SELECT id FROM users WHERE username = ?`).get(username)?.id ?? null;
+    }
+  },
+  assignUserToProject(userId, projectId) {
+    db.prepare(`INSERT OR IGNORE INTO user_projects (user_id, project_id) VALUES (?, ?)`).run(userId, projectId);
   },
 };
 
@@ -255,3 +336,26 @@ const Workspaces = {
 };
 
 module.exports = { db, Users, Roles, Projects, Workspaces };
+
+// ─── SSO Config helpers ───────────────────────────────────────────────────────
+const SsoConfig = {
+  get() {
+    return db.prepare(`SELECT * FROM sso_config WHERE id = 1`).get() || {
+      id: 1, enabled: 0, show_login_button: 1, provider: 'custom_oidc',
+      client_id: '', client_secret: '', tenant_id: '', issuer_url: '', app_url: '',
+    };
+  },
+  save({ enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url }) {
+    db.prepare(`
+      INSERT INTO sso_config (id, enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url, updated_at)
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        enabled=excluded.enabled, show_login_button=excluded.show_login_button, provider=excluded.provider,
+        client_id=excluded.client_id, client_secret=excluded.client_secret,
+        tenant_id=excluded.tenant_id, issuer_url=excluded.issuer_url,
+        app_url=excluded.app_url, updated_at=excluded.updated_at
+    `).run(enabled ? 1 : 0, show_login_button ? 1 : 0, provider, client_id, client_secret, tenant_id, issuer_url, app_url);
+  },
+};
+
+module.exports = { db, Users, Roles, Projects, Workspaces, SsoConfig };

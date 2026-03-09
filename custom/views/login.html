@@ -135,6 +135,41 @@
       color: #888;
       font-size: 12px;
     }
+
+    .sso-btn {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      padding: 11px 14px;
+      background: #fff;
+      border: 1px solid #d0d0d0;
+      border-radius: 9px;
+      color: #3c4043;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background .15s, box-shadow .15s;
+    }
+    .sso-btn:hover { background: #f8f8f8; box-shadow: 0 1px 6px rgba(0,0,0,.15); }
+    .sso-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .sso-btn svg { flex-shrink: 0; }
+    .divider-or {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 18px 0 4px;
+      color: #444;
+      font-size: 12px;
+    }
+    .divider-or::before, .divider-or::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #2a2a2a;
+    }
   </style>
 </head>
 <body>
@@ -179,6 +214,18 @@
       <div class="error-box" id="errorBox"></div>
     </form>
 
+    <div class="divider-or" id="ssoSeparator" style="display:none">atau</div>
+    <button class="sso-btn" id="ssoBtn" onclick="window.location.href='/auth/sso'" style="display:none">
+      <svg id="ssoIcon" width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+        <!-- Default: Microsoft logo -->
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      <span id="ssoLabel">Masuk dengan Microsoft</span>
+    </button>
+
     <div class="divider"></div>
     <p class="hint">Username: <code>admin</code> &nbsp;·&nbsp; Password: <code>admin123</code></p>
   </div>
@@ -187,6 +234,52 @@
     const form = document.getElementById('loginForm');
     const submitBtn = document.getElementById('submitBtn');
     const errorBox = document.getElementById('errorBox');
+
+    // Provider icons and labels
+    const providerIcons = {
+      azure: '<rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/>',
+      google: '<circle cx="10.5" cy="10.5" r="8.5" fill="none" stroke="#4285F4" stroke-width="1.5"/><text x="10.5" y="12" text-anchor="middle" font-size="7" font-weight="bold" fill="#4285F4">G</text>',
+      github: '<path fill="#0d0d0d" d="M10.5 1c-5.25 0-9.5 4.25-9.5 9.5 0 4.2 2.75 7.8 6.55 9.1.5.08.7-.22.7-.48v-1.7c-2.65.58-3.2-1.28-3.2-1.28-.45-1.15-1.1-1.45-1.1-1.45-.9-.62.07-.6.07-.6 1 .07 1.55 1.04 1.55 1.04.9 1.55 2.36 1.1 2.93.85.08-.65.34-1.1.63-1.35-2.2-.25-4.5-1.1-4.5-4.85 0-1.07.38-1.95 1.02-2.64-.1-.26-.44-1.3.1-2.7 0 0 .83-.27 2.73 1.01.79-.22 1.64-.33 2.48-.33.84 0 1.69.11 2.48.33 1.9-1.28 2.73-1.01 2.73-1.01.54 1.4.2 2.44.1 2.7.63.69 1.02 1.57 1.02 2.64 0 3.76-2.3 4.6-4.5 4.84.35.3.66.9.66 1.82v2.7c0 .26.2.57.7.48C20.25 18.8 23 15.2 23 11 23 5.25 18.75 1 10.5 1z"/>',
+      okta: '<text x="10.5" y="12" text-anchor="middle" font-size="9" font-weight="bold" fill="#3c4043">O</text>',
+      custom_oidc: '<circle cx="10.5" cy="10.5" r="8.5" fill="none" stroke="#999" stroke-width="1.5"/><text x="10.5" y="13" text-anchor="middle" font-size="8" font-weight="bold" fill="#999">⊙</text>',
+    };
+
+    const providerLabels = {
+      azure: 'Microsoft',
+      google: 'Google',
+      github: 'GitHub',
+      okta: 'Okta',
+      custom_oidc: 'SSO',
+    };
+
+    // Show SSO button if backend has OIDC configured
+    fetch('/api/sso-status').then(r => r.json()).then(data => {
+      if (data.enabled) {
+        const provider = data.provider || 'azure';
+        const label = data.label || providerLabels[provider] || 'SSO';
+        document.getElementById('ssoLabel').textContent = 'Masuk dengan ' + label;
+        
+        // Update icon
+        const iconSvg = document.getElementById('ssoIcon');
+        iconSvg.innerHTML = providerIcons[provider] || providerIcons.azure;
+        
+        document.getElementById('ssoBtn').style.display = 'flex';
+        document.getElementById('ssoSeparator').style.display = 'flex';
+      }
+    }).catch(() => {});
+
+    // Handle SSO error codes from URL
+    const ssoErrors = {
+      not_registered: 'Akun Microsoft Anda belum terdaftar. Hubungi administrator.',
+      no_email:       'Akun Microsoft tidak memiliki email yang dapat digunakan.',
+      sso_failed:     'Login SSO gagal. Coba lagi atau gunakan username/password.',
+      sso_not_configured: 'SSO belum dikonfigurasi oleh administrator.',
+    };
+    const urlError = new URLSearchParams(location.search).get('error');
+    if (urlError && ssoErrors[urlError]) {
+      errorBox.textContent = ssoErrors[urlError];
+      errorBox.style.display = 'block';
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

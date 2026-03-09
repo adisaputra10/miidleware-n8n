@@ -47,9 +47,12 @@ router.post('/api/users', adminOnly, async (req, res) => {
   // Invite user to n8n if email is provided
   let n8nInvited = false;
   if (email) {
-    const n8nUser = await inviteN8NUser(email, full_name || username, getN8NCookies());
+    const n8nUser = await inviteN8NUser(email, full_name || username, password);
     n8nInvited = !!n8nUser;
   }
+
+  // Auto-assign new user to all existing active projects
+  Users.assignToAllProjects(id);
 
   res.status(201).json({
     id,

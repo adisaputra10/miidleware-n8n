@@ -6,7 +6,7 @@ const path = require('path');
 const { Workspaces } = require('../lib/db');
 
 const router = Router();
-const N8N_BASE = 'http://localhost:5678';
+const N8N_BASE = process.env.N8N_URL || 'http://localhost:5678';
 
 function adminOnly(req, res, next) {
   if (req.session?.role === 'admin') return next();

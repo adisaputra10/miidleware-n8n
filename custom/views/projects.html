@@ -51,15 +51,24 @@
     .badge-active   { background: rgba(34,197,94,.12); color: #4ade80; }
     .badge-inactive { background: rgba(239,68,68,.12); color: #f87171; }
 
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 50; align-items: center; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; width: 100%; max-width: 480px; padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,.6); }
-    .modal h2 { font-size: 17px; font-weight: 700; color: #f0f0f0; margin-bottom: 20px; }
+    /* ── Inline form section ── */
+    .form-section { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px 28px; margin-bottom: 20px; display: none; }
+    .form-section.open { display: block; }
+    .form-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .form-section-header h2 { font-size: 16px; font-weight: 700; color: #f0f0f0; margin: 0; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
     .form-group { margin-bottom: 16px; }
+    .form-group.full { grid-column: 1 / -1; }
     label { display: block; font-size: 12px; font-weight: 500; color: #888; margin-bottom: 6px; }
     input, select, textarea { width: 100%; padding: 9px 12px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 14px; outline: none; transition: border-color .15s; font-family: inherit; }
     input:focus, select:focus, textarea:focus { border-color: #ff6d5a; }
     textarea { resize: vertical; min-height: 70px; }
+    .form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+    /* ── Modals for credentials / members / workflow ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 50; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; width: 100%; max-width: 480px; padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,.6); }
+    .modal h2 { font-size: 17px; font-weight: 700; color: #f0f0f0; margin-bottom: 20px; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
     .toast { position: fixed; bottom: 24px; right: 24px; background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 12px 18px; font-size: 13px; color: #e0e0e0; z-index: 100; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none; }
@@ -67,7 +76,26 @@
     .toast.success { border-color: rgba(34,197,94,.4); color: #4ade80; }
     .toast.error { border-color: rgba(239,68,68,.4); color: #f87171; }
 
-    /* members modal */
+    /* ── Assign User modal ── */
+    .assign-search { width: 100%; padding: 9px 12px 9px 36px; background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 8px; color: #f0f0f0; font-size: 13px; outline: none; transition: border-color .15s; }
+    .assign-search:focus { border-color: #ff6d5a; }
+    .assign-search-wrap { position: relative; margin-bottom: 14px; }
+    .assign-search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .user-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; transition: background .12s, border-color .12s; margin-bottom: 6px; user-select: none; }
+    .user-item:last-child { margin-bottom: 0; }
+    .user-item:hover { background: #1e1e1e; }
+    .user-item.selected { background: rgba(255,109,90,.06); border-color: rgba(255,109,90,.25); }
+    .user-item input[type=checkbox] { display: none; }
+    .user-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #333; background: #1a1a1a; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: background .12s, border-color .12s; }
+    .user-item.selected .user-check { background: #ff6d5a; border-color: #ff6d5a; }
+    .user-check svg { display: none; }
+    .user-item.selected .user-check svg { display: block; }
+    .user-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,#3b82f6,#2563eb); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-item.selected .user-avatar-sm { background: linear-gradient(135deg,#ff6d5a,#ff4f3b); }
+    .user-info-col { flex: 1; min-width: 0; }
+    .user-info-name { font-size: 13px; font-weight: 600; color: #e0e0e0; }
+    .user-info-sub { font-size: 11px; color: #555; margin-top: 1px; }
+    .assign-count { font-size: 12px; color: #ff8575; font-weight: 600; }
     .member-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: #1a1a1a; border-radius: 8px; font-size: 13px; color: #ccc; margin-bottom: 6px; }
     .member-item:last-child { margin-bottom: 0; }
 
@@ -78,6 +106,13 @@
     /* Open workflow button */
     .btn-open-workflow { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #63b3ed; text-decoration: none; background: rgba(99,179,237,.06); border: 1px solid rgba(99,179,237,.15); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
     .btn-open-workflow:hover { background: rgba(99,179,237,.12); }
+
+    /* Inline workflow section */
+    .workflow-section { display: none; flex-direction: column; background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 12px; margin-top: 20px; height: 76vh; }
+    .workflow-section.open { display: flex; }
+    .workflow-section-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid #1e1e1e; background: #161616; border-radius: 12px 12px 0 0; flex-shrink: 0; }
+    .workflow-section-header span { font-size: 14px; font-weight: 600; color: #f0f0f0; }
+    .workflow-section iframe { flex: 1; border: none; border-radius: 0 0 12px 12px; background: #0d0d0d; }
   </style>
 </head>
 <body>
@@ -107,60 +142,111 @@
       </button>
     </div>
     <div class="content">
+      <!-- Inline create/edit form section -->
+      <div class="form-section" id="projectSection">
+        <div class="form-section-header">
+          <h2 id="sectionTitle">Tambah Project</h2>
+          <button class="btn btn-ghost btn-sm" onclick="closeSection()">✕ Tutup</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Nama Project *</label>
+            <input type="text" id="f_name" placeholder="Nama project" oninput="syncUserFromName()"/>
+          </div>
+          <div class="form-group full">
+            <label>Deskripsi</label>
+            <textarea id="f_description" placeholder="Deskripsi singkat project..."></textarea>
+          </div>
+          <div class="form-group" id="statusGroup" style="display:none">
+            <label>Status</label>
+            <select id="f_is_active">
+              <option value="1">Aktif</option>
+              <option value="0">Nonaktif</option>
+            </select>
+          </div>
+        </div>
+        <!-- User n8n section (only shown when creating) -->
+        <div id="userSection" style="margin-top:4px;padding-top:16px;border-top:1px solid #222">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#e84393" stroke-width="2" width="15" height="15"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span style="font-size:13px;font-weight:600;color:#e84393">User n8n untuk Project ini</span>
+            <span style="font-size:11px;color:#666">(opsional — dibuat otomatis dari nama project)</span>
+          </div>
+          <input type="hidden" id="f_u_fullname"/>
+          <input type="hidden" id="f_u_email"/>
+          <small style="color:#555;font-size:12px">Nama lengkap, email &amp; password akan dibuat otomatis dari nama project</small>
+        </div>
+        <div class="form-footer">
+          <button class="btn btn-ghost" onclick="closeSection()">Batal</button>
+          <button class="btn btn-primary" id="saveBtn" onclick="saveProject(event)">Simpan</button>
+        </div>
+      </div>
+
       <div class="grid" id="projectGrid">
         <div style="color:#444;padding:32px;font-size:13px">Memuat...</div>
+      </div>
+
+      <!-- Inline Workflow Section -->
+      <div class="workflow-section" id="workflowSection">
+        <div class="workflow-section-header">
+          <span id="workflowSectionTitle">Workflow</span>
+          <button class="btn btn-ghost btn-sm" onclick="closeWorkflowSection()">✕ Tutup</button>
+        </div>
+        <iframe id="workflowFrame" src=""></iframe>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Create / Edit Modal -->
-<div class="modal-overlay" id="projectModal">
-  <div class="modal">
-    <h2 id="modalTitle">Tambah Project</h2>
-    <div class="form-group">
-      <label>Nama Project *</label>
-      <input type="text" id="f_name" placeholder="Nama project"/>
-    </div>
-    <div class="form-group">
-      <label>Deskripsi</label>
-      <textarea id="f_description" placeholder="Deskripsi singkat project..."></textarea>
-    </div>
-    <div class="form-group" id="statusGroup" style="display:none">
-      <label>Status</label>
-      <select id="f_is_active">
-        <option value="1">Aktif</option>
-        <option value="0">Nonaktif</option>
-      </select>
+
+<!-- Credentials Result Modal -->
+<div class="modal-overlay" id="credentialsModal">
+  <div class="modal" style="max-width:480px">
+    <h2 style="color:#4caf50;display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Project Berhasil Dibuat!
+    </h2>
+    <p id="credProjectMsg" style="color:#aaa;font-size:13px;margin:8px 0 16px"></p>
+    <div id="credUserBlock" style="display:none;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;color:#e84393;font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">🔑 Kredensial User Baru</div>
+      <div style="display:grid;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#888;font-size:12px">Email (login n8n)</span>
+          <span id="credEmail" style="font-family:monospace;font-size:13px;color:#fff;background:#2a2a2a;padding:4px 10px;border-radius:4px;cursor:pointer" onclick="copyText(this)" title="Klik untuk copy"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#888;font-size:12px">Password</span>
+          <span id="credPassword" style="font-family:monospace;font-size:13px;color:#fff;background:#2a2a2a;padding:4px 10px;border-radius:4px;cursor:pointer" onclick="copyText(this)" title="Klik untuk copy"></span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#666;margin-top:12px;margin-bottom:0">Klik email/password untuk menyalin. Simpan kredensial ini — password tidak akan ditampilkan lagi.</p>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('projectModal')">Batal</button>
-      <button class="btn btn-primary" onclick="saveProject()">Simpan</button>
+      <button class="btn btn-primary" onclick="closeModal('credentialsModal')">Tutup</button>
     </div>
   </div>
 </div>
 
-<!-- Members Modal -->
+<!-- Assign User Modal -->
 <div class="modal-overlay" id="membersModal">
-  <div class="modal">
-    <h2>Members — <span id="memberProjectName"></span></h2>
-    <div id="memberList" style="max-height:300px;overflow-y:auto"></div>
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <h2 style="margin-bottom:0">Assign User &mdash; <span id="memberProjectName"></span></h2>
+      <span class="assign-count" id="assignCount">0 dipilih</span>
+    </div>
+    <p style="font-size:12px;color:#555;margin-bottom:16px">Centang user yang dapat mengakses project ini</p>
+    <div class="assign-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="assign-search" id="memberSearch" placeholder="Cari username atau nama..." oninput="filterMembers()">
+    </div>
+    <div id="memberList" style="max-height:320px;overflow-y:auto;padding-right:2px"></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('membersModal')">Tutup</button>
+      <button class="btn btn-ghost" onclick="closeModal('membersModal')">Batal</button>
+      <button class="btn btn-primary" onclick="saveMembers()">Simpan</button>
     </div>
   </div>
 </div>
 
-<!-- Open Workflow Modal -->
-<div class="modal-overlay" id="workflowModal">
-  <div class="modal" style="max-width:900px;height:80vh;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <h2 id="workflowModalTitle" style="margin:0">Workflow</h2>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('workflowModal')">✕ Tutup</button>
-    </div>
-    <iframe id="workflowFrame" src="" style="flex:1;border:none;border-radius:8px;background:#0d0d0d"></iframe>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -178,10 +264,11 @@ async function init() {
 function buildNav() {
   const links = [
     { href: '/app/dashboard',  label: 'Dashboard',  icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
-    { href: '/app/workspaces', label: 'Workspaces', icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
-    { href: '/app/projects',   label: 'Projects',   icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
-    { href: '/app/users',      label: 'Users',      icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
-  ].filter(l => me.role === 'admin' || l.href !== '/app/users');
+
+    me.role === 'admin' ? { href: '/app/projects',   label: 'Projects',   icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' } : null,
+    me.role === 'admin' ? { href: '/app/users',      label: 'Users',      icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' } : null,
+    me.role === 'admin' ? { href: '/app/settings',   label: 'Settings',   icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' } : null,
+  ].filter(Boolean);
   document.getElementById('nav').innerHTML = links.map(l => `
     <a href="${l.href}" class="nav-item ${location.pathname === l.href ? 'active' : ''}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${l.icon}</svg>
@@ -207,15 +294,24 @@ async function loadProjects() {
         <span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Aktif' : 'Nonaktif'}</span>
         ${p.member_count !== undefined ? `<span style="font-size:12px;color:#555">${p.member_count} member</span>` : ''}
       </div>
-      ${p.workflow_url ? `
-        <button class="btn-open-workflow" onclick="openWorkflow('${esc(p.workflow_url)}', '${esc(p.name)}')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Buka Workflow
-        </button>
+      ${p.n8n_login_email ? `
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;font-size:12px;display:grid;gap:5px">
+          <div style="color:#555;font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Kredensial n8n</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="color:#888">Email</span>
+            <span style="font-family:monospace;color:#ccc;cursor:pointer;background:#1a1a1a;padding:2px 7px;border-radius:4px" onclick="copyCardText(this)" title="Klik copy">${esc(p.n8n_login_email)}</span>
+          </div>
+          ${me.role === 'admin' && p.n8n_login_password ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="color:#888">Password</span>
+            <span data-secret="${esc(p.n8n_login_password)}" data-show="0" style="font-family:monospace;color:#ccc;cursor:pointer;background:#1a1a1a;padding:2px 7px;border-radius:4px" onclick="toggleSecret(this)" title="Klik untuk lihat">••••••••</span>
+          </div>` : ''}
+        </div>
       ` : ''}
+
       ${me.role === 'admin' ? `
         <div class="project-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openMembers(${p.id}, '${esc(p.name)}')">Members</button>
+          <button class="btn btn-ghost btn-sm" onclick="openMembers(${p.id}, '${esc(p.name)}')">Assign User</button>
           <button class="btn btn-ghost btn-sm" onclick="openEdit(${p.id})">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteProject(${p.id}, '${esc(p.name)}')">Hapus</button>
         </div>
@@ -224,27 +320,68 @@ async function loadProjects() {
   `).join('');
 }
 
+function slugifyName(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function syncUserFromName() {
+  // Only auto-fill when creating (not editing)
+  if (document.getElementById('statusGroup').style.display !== 'none') return;
+  const name = document.getElementById('f_name').value.trim();
+  document.getElementById('f_u_fullname').value = name;
+  document.getElementById('f_u_email').value = name ? `${slugifyName(name)}@n8n.com` : '';
+}
+
+function copyCardText(el) {
+  navigator.clipboard.writeText(el.textContent).then(() => showToast('Disalin!', 'success'));
+}
+
+function toggleSecret(el) {
+  if (el.dataset.show === '0') {
+    el.textContent = el.dataset.secret;
+    el.dataset.show = '1';
+    el.title = 'Klik copy';
+    el.onclick = function() { copyCardText(this); };
+  } else {
+    copyCardText(el);
+  }
+}
+
 function openCreate() {
   editingId = null;
-  document.getElementById('modalTitle').textContent = 'Tambah Project';
+  document.getElementById('sectionTitle').textContent = 'Tambah Project';
   document.getElementById('f_name').value = '';
   document.getElementById('f_description').value = '';
   document.getElementById('statusGroup').style.display = 'none';
-  openModal('projectModal');
+  document.getElementById('userSection').style.display = '';
+  document.getElementById('f_u_fullname').value = '';
+  document.getElementById('f_u_email').value = '';
+  document.getElementById('saveBtn').textContent = 'Simpan';
+  document.getElementById('projectSection').classList.add('open');
+  document.getElementById('projectSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('f_name').focus(), 200);
+}
+
+function closeSection() {
+  document.getElementById('projectSection').classList.remove('open');
 }
 
 async function openEdit(id) {
   const p = await fetch(`/api/projects/${id}`).then(r => r.json());
   editingId = id;
-  document.getElementById('modalTitle').textContent = 'Edit Project';
+  document.getElementById('sectionTitle').textContent = 'Edit Project';
   document.getElementById('f_name').value = p.name;
   document.getElementById('f_description').value = p.description || '';
   document.getElementById('statusGroup').style.display = 'block';
   document.getElementById('f_is_active').value = p.is_active ? '1' : '0';
-  openModal('projectModal');
+  document.getElementById('userSection').style.display = 'none';
+  document.getElementById('saveBtn').textContent = 'Simpan';
+  document.getElementById('projectSection').classList.add('open');
+  document.getElementById('projectSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('f_name').focus(), 200);
 }
 
-async function saveProject() {
+async function saveProject(event) {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = editingId ? 'Menyimpan...' : 'Membuat...'; }
   const body = {
@@ -252,13 +389,39 @@ async function saveProject() {
     description: document.getElementById('f_description').value.trim(),
     is_active: Number(document.getElementById('f_is_active')?.value ?? 1),
   };
+  // Include user fields when creating (only email + fullname — credentials auto-generated)
+  if (!editingId) {
+    const uEmail = document.getElementById('f_u_email').value.trim();
+    if (uEmail) {
+      body.user = { email: uEmail, full_name: document.getElementById('f_u_fullname').value.trim() };
+    }
+  }
   const url = editingId ? `/api/projects/${editingId}` : '/api/projects';
   const method = editingId ? 'PUT' : 'POST';
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await res.json();
   if (btn) { btn.disabled = false; btn.textContent = 'Simpan'; }
-  if (res.ok) { closeModal('projectModal'); loadProjects(); showToast(data.message, 'success'); }
-  else showToast(data.message, 'error');
+  if (res.ok) {
+    closeSection();
+    loadProjects();
+    // Show credentials modal if a new user was created
+    if (data.new_user_credentials) {
+      const c = data.new_user_credentials;
+      document.getElementById('credProjectMsg').textContent = data.message;
+      document.getElementById('credEmail').textContent = c.email;
+      document.getElementById('credPassword').textContent = c.password;
+      document.getElementById('credUserBlock').style.display = 'block';
+      openModal('credentialsModal');
+    } else {
+      showToast(data.message, 'success');
+    }
+  } else {
+    showToast(data.message, 'error');
+  }
+}
+
+function copyText(el) {
+  navigator.clipboard.writeText(el.textContent).then(() => showToast('Disalin!', 'success'));
 }
 
 async function deleteProject(id, name) {
@@ -269,36 +432,96 @@ async function deleteProject(id, name) {
   else showToast(data.message, 'error');
 }
 
+let assigningProjectId = null;
+let memberUsers = [];
+
+function updateAssignCount() {
+  const n = document.querySelectorAll('#memberList .user-item.selected').length;
+  document.getElementById('assignCount').textContent = n + ' dipilih';
+}
+
+function filterMembers() {
+  const q = document.getElementById('memberSearch').value.toLowerCase();
+  document.querySelectorAll('#memberList .user-item').forEach(el => {
+    const text = el.dataset.search || '';
+    el.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+function toggleUserItem(el) {
+  el.classList.toggle('selected');
+  const cb = el.querySelector('input[type=checkbox]');
+  if (cb) cb.checked = el.classList.contains('selected');
+  updateAssignCount();
+}
+
 async function openMembers(id, name) {
+  assigningProjectId = id;
   document.getElementById('memberProjectName').textContent = name;
-  const members = await fetch(`/api/projects/${id}/members`).then(r => r.json());
+  document.getElementById('memberSearch').value = '';
+  const [allUsers, members] = await Promise.all([
+    fetch('/api/users').then(r => r.json()),
+    fetch(`/api/projects/${id}/members`).then(r => r.json()),
+  ]);
+  memberUsers = allUsers.filter(u => u.is_active !== 0);
+  const assignedIds = new Set(members.filter(m => m.is_active !== 0).map(m => m.id));
   const list = document.getElementById('memberList');
-  if (!members.length) {
-    list.innerHTML = '<p style="color:#555;font-size:13px;padding:8px 0">Belum ada member. Assign user dari halaman User Management.</p>';
+  if (!memberUsers.length) {
+    list.innerHTML = '<p style="color:#555;font-size:13px;padding:12px 0">Belum ada user aktif. Tambah user dulu di halaman Users.</p>';
+    document.getElementById('assignCount').textContent = '0 dipilih';
   } else {
-    list.innerHTML = members.map(m => `
-      <div class="member-item">
-        <div>
-          <strong style="color:#e0e0e0">${esc(m.username)}</strong>
-          ${m.full_name ? `<span style="color:#666;font-size:12px;margin-left:6px">${esc(m.full_name)}</span>` : ''}
+    list.innerHTML = memberUsers.map(u => {
+      const sel = assignedIds.has(u.id);
+      const initial = (u.username || '?').charAt(0).toUpperCase();
+      const search = ((u.username || '') + ' ' + (u.full_name || '') + ' ' + (u.email || '')).toLowerCase();
+      return `<div class="user-item${sel ? ' selected' : ''}" data-search="${esc(search)}" onclick="toggleUserItem(this)">
+        <input type="checkbox" value="${u.id}" ${sel ? 'checked' : ''}>
+        <div class="user-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="1.5 6 4.5 9 10.5 3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="user-avatar-sm">${esc(initial)}</div>
+        <div class="user-info-col">
+          <div class="user-info-name">${esc(u.username)}${u.full_name ? ` <span style="font-weight:400;color:#666">${esc(u.full_name)}</span>` : ''}</div>
+          <div class="user-info-sub">${esc(u.email || '')} &bull; ${esc(u.role_label || '')}</div>
         </div>
-        <span style="font-size:12px;color:#888">${esc(m.role_label)}</span>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
+    updateAssignCount();
   }
   openModal('membersModal');
 }
 
-function openWorkflow(url, name) {
-  document.getElementById('workflowModalTitle').textContent = name;
+async function saveMembers() {
+  const checked = [...document.querySelectorAll('#memberList .user-item.selected input[type=checkbox]')].map(c => Number(c.value));
+  const res = await fetch(`/api/projects/${assigningProjectId}/members`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_ids: checked }),
+  });
+  const data = await res.json();
+  closeModal('membersModal');
+  loadProjects();
+  showToast(data.message, res.ok ? 'success' : 'error');
+}
+
+async function openWorkflow(id, url, name) {
+  document.getElementById('workflowSectionTitle').textContent = name;
+  // Switch n8n session to the project's user (if credentials are stored)
+  await fetch(`/api/projects/${id}/n8n-token`, { method: 'POST' }).catch(() => {});
   document.getElementById('workflowFrame').src = url;
-  openModal('workflowModal');
+  document.getElementById('projectGrid').style.display = 'none';
+  const section = document.getElementById('workflowSection');
+  section.classList.add('open');
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeWorkflowSection() {
+  document.getElementById('workflowSection').classList.remove('open');
+  document.getElementById('workflowFrame').src = '';
+  document.getElementById('projectGrid').style.display = '';
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
-  if (id === 'workflowModal') document.getElementById('workflowFrame').src = '';
 }
 
 function showToast(msg, type = '') {
