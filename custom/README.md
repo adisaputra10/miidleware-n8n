@@ -342,41 +342,73 @@ The project enforces these minimum coverage levels:
 
 ## 🐳 Docker
 
+### Prerequisites
+
+Before building the Docker image, compile n8n locally first:
+
+```bash
+# From repo root (c:\repo\n8n)
+pnpm build
+pnpm --filter=n8n --prod --legacy deploy compiled
+```
+
 ### Build Docker Image
 
 ```bash
-docker build -t n8n-embed-app:latest .
+# From repo root (c:\repo\n8n)
+docker build -f docker/images/n8n/Dockerfile -t n8nio/n8n:local .
 ```
 
-### Run Container
+> **Note:** The Dockerfile copies from `compiled/` (pre-built locally). Run `pnpm build` + `pnpm deploy` before every Docker build if code has changed.
+
+### Run with Docker Compose
+
+```bash
+cd docker
+docker compose up -d
+
+# Check logs
+docker logs docker-n8n-1 -f
+```
+
+### Run Container (standalone)
 
 ```bash
 docker run -d \
-  --name n8n-embed \
-  -p 3000:3000 \
-  -e N8N_URL=http://host.docker.internal:5678 \
-  -e N8N_ADMIN_EMAIL=admin@n8n.local \
-  -e N8N_ADMIN_PASSWORD=StrongPassword123! \
-  -e N8N_API_KEY=... \
-  -e SESSION_SECRET=... \
-  -v n8n-embed-data:/app/data \
-  n8n-embed-app:latest
+  --name n8n \
+  -p 5678:5678 \
+  -e DB_TYPE=postgresdb \
+  -e DB_POSTGRESDB_HOST=host.docker.internal \
+  -e DB_POSTGRESDB_PORT=5432 \
+  -e DB_POSTGRESDB_DATABASE=n8n-local \
+  -e DB_POSTGRESDB_USER=root \
+  -e DB_POSTGRESDB_PASSWORD=rootpassword \
+  -e N8N_PUSH_BACKEND=sse \
+  -e N8N_ENCRYPTION_KEY=your-encryption-key \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n:local
 ```
 
-### Docker Compose (with n8n)
+### Docker Compose (with custom app)
 
 ```yaml
 version: '3.8'
 services:
   n8n:
-    image: n8n:latest
+    image: n8nio/n8n:local
     ports:
       - '5678:5678'
     environment:
-      - N8N_PROTOCOL=http
-      - N8N_HOST=localhost:5678
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=host.docker.internal
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n-local
+      - DB_POSTGRESDB_USER=root
+      - DB_POSTGRESDB_PASSWORD=rootpassword
+      - N8N_PUSH_BACKEND=sse
+      - N8N_ENCRYPTION_KEY=your-encryption-key
     volumes:
-      - n8n-data:/home/node/.n8n
+      - n8n_data:/home/node/.n8n
 
   custom-app:
     build: ./custom
@@ -387,15 +419,25 @@ services:
     environment:
       - N8N_URL=http://n8n:5678
       - N8N_ADMIN_EMAIL=admin@n8n.local
-      - N8N_ADMIN_PASSWORD=...
+      - N8N_ADMIN_PASSWORD=StrongPassword123!
       - N8N_API_KEY=...
       - SESSION_SECRET=...
     volumes:
       - n8n-embed-data:/app/data
 
 volumes:
-  n8n-data:
+  n8n_data:
   n8n-embed-data:
+```
+
+### Full Rebuild Workflow
+
+```bash
+# From repo root (c:\repo\n8n)
+pnpm build
+pnpm --filter=n8n --prod --legacy deploy compiled
+docker build -f docker/images/n8n/Dockerfile -t n8nio/n8n:local .
+cd docker && docker compose up -d
 ```
 
 ---
@@ -510,11 +552,4 @@ When adding new features:
 # Before committing
 npm lint    # Check code style
 npm test    # Run all tests with coverage
-```
-
-
-```bash
-# Before committing
-cd ../
-docker build -f docker/images/n8n/Dockerfile -t n8nio/n8n:local .
 ```
