@@ -511,3 +511,10 @@ When adding new features:
 npm lint    # Check code style
 npm test    # Run all tests with coverage
 ```
+
+
+```bash
+# Before committing
+cd ../
+docker build -f docker/images/n8n/Dockerfile -t n8nio/n8n:local .
+```
