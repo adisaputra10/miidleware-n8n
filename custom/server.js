@@ -82,7 +82,7 @@ function requireAuth(req, res, next) {
 let oidcClient = null;
 
 async function initOIDC() {
-  const cfg = SsoConfig.get();
+  const cfg = await SsoConfig.get();
   oidcClient = null; // reset on every call (re-init after settings save)
 
   if (!cfg.enabled || !cfg.client_id || !cfg.client_secret) {
@@ -159,7 +159,7 @@ app.get('/auth/sso/callback', async (req, res) => {
     const claims = tokenSet.claims();
     const email = claims.email || claims.preferred_username;
     if (!email) return res.redirect('/app/login?error=no_email');
-    const user = Users.getByEmail(email);
+    const user = await Users.getByEmail(email);
     if (!user) return res.redirect('/app/login?error=not_registered');
     req.session.authenticated = true;
     req.session.userId = user.id;
@@ -180,8 +180,8 @@ const providerLabels = {
   okta: 'Okta',
   custom_oidc: 'SSO',
 };
-app.get('/api/sso-status', (req, res) => {
-  const cfg = SsoConfig.get();
+app.get('/api/sso-status', async (req, res) => {
+  const cfg = await SsoConfig.get();
   const baseEnabled = !!cfg.enabled && !!cfg.show_login_button;
   
   // Filter available providers based on their enabled status
@@ -226,12 +226,12 @@ app.get('/app/projects',   adminPage, (req, res) => res.sendFile(path.join(__dir
 app.get('/app/users',      adminPage, (req, res) => res.sendFile(path.join(__dirname, 'views', 'users.html')));
 app.get('/app/settings',   adminPage, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username dan password wajib diisi' });
   }
-  const user = Users.verifyPassword(username, password);
+  const user = await Users.verifyPassword(username, password);
   if (user) {
     req.session.authenticated = true;
     req.session.userId = user.id;
@@ -262,8 +262,8 @@ function adminOnly(req, res, next) {
   res.status(403).json({ message: 'Forbidden' });
 }
 
-app.get('/api/settings/sso', requireAuth, adminOnly, (req, res) => {
-  const cfg = SsoConfig.get();
+app.get('/api/settings/sso', requireAuth, adminOnly, async (req, res) => {
+  const cfg = await SsoConfig.get();
   // Never expose client_secret in GET response
   res.json({
     enabled:           !!cfg.enabled,
@@ -285,8 +285,8 @@ app.get('/api/settings/sso', requireAuth, adminOnly, (req, res) => {
 app.put('/api/settings/sso', requireAuth, adminOnly, async (req, res) => {
   const { enabled, show_login_button, provider, client_id, client_secret, tenant_id, issuer_url, app_url, azure_enabled, google_enabled, github_enabled, okta_enabled, custom_oidc_enabled } = req.body;
   // If client_secret left blank, keep existing secret
-  const existing = SsoConfig.get();
-  SsoConfig.save({
+  const existing = await SsoConfig.get();
+  await SsoConfig.save({
     enabled:           !!enabled,
     show_login_button: !!show_login_button,
     provider:          provider || 'custom_oidc',

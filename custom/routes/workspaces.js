@@ -26,45 +26,43 @@ async function fetchN8NWorkflowInfo(workflowId, cookies) {
 }
 
 // ─── GET /api/workspaces — list all ──────────────────────────────────────────
-router.get('/api/workspaces', (req, res) => {
-  res.json(Workspaces.getAll());
+router.get('/api/workspaces', async (req, res) => {
+  res.json(await Workspaces.getAll());
 });
 
 // ─── GET /api/workspaces/:id — single entry ───────────────────────────────────
-router.get('/api/workspaces/:id', (req, res) => {
-  const ws = Workspaces.getById(Number(req.params.id));
+router.get('/api/workspaces/:id', async (req, res) => {
+  const ws = await Workspaces.getById(Number(req.params.id));
   if (!ws) return res.status(404).json({ message: 'Workspace not found' });
   res.json(ws);
 });
 
 // ─── GET /api/workspaces/:id/n8n-info — live name + status from n8n ──────────
 router.get('/api/workspaces/:id/n8n-info', async (req, res) => {
-  const ws = Workspaces.getById(Number(req.params.id));
+  const ws = await Workspaces.getById(Number(req.params.id));
   if (!ws) return res.status(404).json({ message: 'Workspace not found' });
-  // n8nAuthCookies are managed in server.js; pass via a module-level getter
   const { getN8NCookies } = require('../server-state');
   const info = await fetchN8NWorkflowInfo(ws.workflow_id, getN8NCookies());
   res.json({ ...ws, n8n_name: info.name, n8n_active: info.active });
 });
 
 // ─── POST /api/workspaces — create ────────────────────────────────────────────
-router.post('/api/workspaces', adminOnly, (req, res) => {
+router.post('/api/workspaces', adminOnly, async (req, res) => {
   const { name, workflow_id, description } = req.body;
   if (!workflow_id) return res.status(400).json({ message: 'workflow_id wajib diisi' });
 
-  // Extract workflow ID if full URL was pasted
   const extractedId = extractWorkflowId(workflow_id);
   if (!extractedId) return res.status(400).json({ message: 'Format workflow_id tidak valid' });
 
-  if (Workspaces.getByWorkflowId(extractedId)) {
+  if (await Workspaces.getByWorkflowId(extractedId)) {
     return res.status(409).json({ message: 'Workflow ID sudah terdaftar' });
   }
 
   try {
-    const id = Workspaces.create({ name, workflow_id: extractedId, description });
+    const id = await Workspaces.create({ name, workflow_id: extractedId, description });
     res.status(201).json({ id, message: 'Workspace berhasil ditambahkan' });
   } catch (err) {
-    if (err.message.includes('UNIQUE')) {
+    if (err.message.includes('UNIQUE') || err.message.includes('unique') || err.code === '23505') {
       return res.status(409).json({ message: 'Workflow ID sudah terdaftar' });
     }
     throw err;
@@ -72,7 +70,7 @@ router.post('/api/workspaces', adminOnly, (req, res) => {
 });
 
 // ─── PUT /api/workspaces/:id — update ─────────────────────────────────────────
-router.put('/api/workspaces/:id', adminOnly, (req, res) => {
+router.put('/api/workspaces/:id', adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   const { name, workflow_id, description, is_active } = req.body;
   if (!workflow_id) return res.status(400).json({ message: 'workflow_id wajib diisi' });
@@ -80,13 +78,12 @@ router.put('/api/workspaces/:id', adminOnly, (req, res) => {
   const extractedId = extractWorkflowId(workflow_id);
   if (!extractedId) return res.status(400).json({ message: 'Format workflow_id tidak valid' });
 
-  // Conflict check (exclude self)
-  const existing = Workspaces.getByWorkflowId(extractedId);
+  const existing = await Workspaces.getByWorkflowId(extractedId);
   if (existing && existing.id !== id) {
     return res.status(409).json({ message: 'Workflow ID sudah digunakan oleh workspace lain' });
   }
 
-  Workspaces.update(id, {
+  await Workspaces.update(id, {
     name: name || extractedId,
     workflow_id: extractedId,
     description: description || '',
@@ -96,10 +93,10 @@ router.put('/api/workspaces/:id', adminOnly, (req, res) => {
 });
 
 // ─── DELETE /api/workspaces/:id ───────────────────────────────────────────────
-router.delete('/api/workspaces/:id', adminOnly, (req, res) => {
+router.delete('/api/workspaces/:id', adminOnly, async (req, res) => {
   const id = Number(req.params.id);
-  if (!Workspaces.getById(id)) return res.status(404).json({ message: 'Workspace not found' });
-  Workspaces.delete(id);
+  if (!await Workspaces.getById(id)) return res.status(404).json({ message: 'Workspace not found' });
+  await Workspaces.delete(id);
   res.json({ message: 'Workspace berhasil dihapus' });
 });
 

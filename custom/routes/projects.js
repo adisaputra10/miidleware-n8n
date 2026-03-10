@@ -106,23 +106,23 @@ async function inviteN8NUser(email, fullName, password) {
 }
 
 // ─── API: list projects ───────────────────────────────────────────────────────
-router.get('/api/projects', (req, res) => {
+router.get('/api/projects', async (req, res) => {
   if (req.session?.role !== 'admin') {
-    return res.json(Users.getProjects(req.session.userId));
+    return res.json(await Users.getProjects(req.session.userId));
   }
-  res.json(Projects.getAll());
+  res.json(await Projects.getAll());
 });
 
 // ─── API: get single project ──────────────────────────────────────────────────
-router.get('/api/projects/:id', (req, res) => {
-  const project = Projects.getById(Number(req.params.id));
+router.get('/api/projects/:id', async (req, res) => {
+  const project = await Projects.getById(Number(req.params.id));
   if (!project) return res.status(404).json({ message: 'Project not found' });
   res.json(project);
 });
 
 // ─── API: login to n8n as the project's user, store cookie in browser session ─
 router.post('/api/projects/:id/n8n-token', async (req, res) => {
-  const project = Projects.getById(Number(req.params.id));
+  const project = await Projects.getById(Number(req.params.id));
   if (!project) return res.status(404).json({ message: 'Project not found' });
   if (!project.n8n_login_email || !project.n8n_login_password) {
     return res.json({ success: false, message: 'No n8n credentials stored for this project' });
@@ -189,10 +189,10 @@ router.post('/api/projects', adminOnly, async (req, res) => {
   // No extra validation needed — username & password are auto-generated server-side
 
   // 1. Save to local DB first (workflow_url filled later after n8n workflow is created)
-  const localId = Projects.create({ name, description, workflow_url: '' });
+  const localId = await Projects.create({ name, description, workflow_url: '' });
 
   // Auto-assign ALL existing users to this project
-  Projects.assignAllUsers(localId);
+  await Projects.assignAllUsers(localId);
 
   const { getN8NCookies } = require('../server-state');
   const cookies = getN8NCookies();
@@ -218,16 +218,16 @@ router.post('/api/projects', adminOnly, async (req, res) => {
         // Store credentials to return to frontend (only once, plaintext)
         newUserCredentials = { email: userPayload.email, password: autoPassword };
         // Persist n8n login credentials in project for future workflow sessions
-        Projects.setN8NCredentials(localId, userPayload.email, autoPassword);
+        await Projects.setN8NCredentials(localId, userPayload.email, autoPassword);
 
         // Register n8n user locally (inactive — cannot login to custom app) and assign to this project
         const slugUser = userPayload.email.split('@')[0].replace(/[^a-z0-9-]/gi, '-');
-        const localUserId = Projects.createN8NUser({
+        const localUserId = await Projects.createN8NUser({
           username: slugUser,
           full_name: userPayload.full_name || slugUser,
           email: userPayload.email,
         });
-        if (localUserId) Projects.assignUserToProject(localUserId, localId);
+        if (localUserId) await Projects.assignUserToProject(localUserId, localId);
 
         // Use the session cookie from accept response (user is already active + logged in)
         projectUserCookie = n8nUser.sessionCookie || null;
@@ -287,8 +287,8 @@ router.post('/api/projects', adminOnly, async (req, res) => {
 
     if (n8nWorkflowId) {
       const workflowUrl = `/workflow/${n8nWorkflowId}`;
-      Projects.update(localId, { name, description: description || '', workflow_url: workflowUrl, is_active: 1 });
-      workspaceId = Workspaces.create({
+      await Projects.update(localId, { name, description: description || '', workflow_url: workflowUrl, is_active: 1 });
+      workspaceId = await Workspaces.create({
         name,
         workflow_id: n8nWorkflowId,
         description: `Workspace untuk project "${name}"`,
@@ -311,11 +311,11 @@ router.post('/api/projects', adminOnly, async (req, res) => {
 });
 
 // ─── API: update project ──────────────────────────────────────────────────────
-router.put('/api/projects/:id', adminOnly, (req, res) => {
+router.put('/api/projects/:id', adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   const { name, description, workflow_url, is_active } = req.body;
   if (!name) return res.status(400).json({ message: 'name wajib diisi' });
-  Projects.update(id, {
+  await Projects.update(id, {
     name,
     description: description || '',
     workflow_url: workflow_url || '',
@@ -326,7 +326,7 @@ router.put('/api/projects/:id', adminOnly, (req, res) => {
 
 // ─── API: delete project ──────────────────────────────────────────────────────
 router.delete('/api/projects/:id', adminOnly, async (req, res) => {
-  const project = Projects.getById(Number(req.params.id));
+  const project = await Projects.getById(Number(req.params.id));
   if (project?.n8n_project_id) {
     try {
       const { getN8NCookies } = require('../server-state');
@@ -337,19 +337,19 @@ router.delete('/api/projects/:id', adminOnly, async (req, res) => {
       console.warn('[delete-project] n8n delete failed:', err.response?.data?.message ?? err.message);
     }
   }
-  Projects.delete(Number(req.params.id));
+  await Projects.delete(Number(req.params.id));
   res.json({ message: 'Project berhasil dihapus' });
 });
 
 // ─── API: get members of project ──────────────────────────────────────────────
-router.get('/api/projects/:id/members', adminOnly, (req, res) => {
-  res.json(Projects.getMembers(Number(req.params.id)));
+router.get('/api/projects/:id/members', adminOnly, async (req, res) => {
+  res.json(await Projects.getMembers(Number(req.params.id)));
 });
 
 // ─── API: set members of project ─────────────────────────────────────────────
-router.put('/api/projects/:id/members', adminOnly, (req, res) => {
+router.put('/api/projects/:id/members', adminOnly, async (req, res) => {
   const userIds = (req.body.user_ids || []).map(Number);
-  Projects.setMembers(Number(req.params.id), userIds);
+  await Projects.setMembers(Number(req.params.id), userIds);
   res.json({ message: 'Member assignment berhasil disimpan' });
 });
 
