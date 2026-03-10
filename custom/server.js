@@ -310,6 +310,30 @@ app.put('/api/settings/sso', requireAuth, adminOnly, async (req, res) => {
 app.all('/rest/ph/*', (req, res) => res.status(204).end());
 app.all('/rest/ph', (req, res) => res.status(204).end());
 
+// ─── SSE proxy for n8n push notifications (Connection lost fix) ──────────────
+// n8n uses Server-Sent Events at /rest/push — must not be buffered
+app.use('/rest/push', requireAuth, createProxyMiddleware({
+  target: N8N_BASE_URL,
+  changeOrigin: true,
+  selfHandleResponse: false,
+  on: {
+    proxyReq(proxyReq, req) {
+      const cookies = req.session?.n8nCookie || state.getN8NCookies();
+      if (cookies) proxyReq.setHeader('Cookie', cookies);
+      // Required for SSE: tell proxy not to buffer
+      proxyReq.setHeader('Accept', 'text/event-stream');
+    },
+    proxyRes(proxyRes, req, res) {
+      // Pass through SSE headers without modification
+      delete proxyRes.headers['x-frame-options'];
+      delete proxyRes.headers['content-security-policy'];
+    },
+    error(err, req, res) {
+      console.error('[push proxy]', err.message);
+    },
+  },
+}));
+
 // ─── N8N Proxy (everything else) ─────────────────────────────────────────────
 const n8nProxy = createProxyMiddleware({
   target: N8N_BASE_URL,
@@ -351,12 +375,14 @@ const n8nProxy = createProxyMiddleware({
 
     error(err, req, res) {
       console.error('[proxy]', err.message);
+      // When called from a WebSocket upgrade, res is a net.Socket — not an HTTP response
+      if (typeof res?.status !== 'function') return;
       if (!res.headersSent) {
         res.status(502).send(`
           <html>
             <body style="font-family:system-ui;padding:40px;background:#111;color:#f87171">
               <h2>n8n tidak dapat dijangkau</h2>
-              <p>Pastikan n8n berjalan di <code>localhost:5678</code> lalu refresh halaman ini.</p>
+              <p>Pastikan n8n berjalan di <code>${N8N_BASE_URL}</code> lalu refresh halaman ini.</p>
             </body>
           </html>
         `);

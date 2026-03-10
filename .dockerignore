@@ -9,6 +9,11 @@
 !compiled/**
 !THIRD_PARTY_LICENSES.md
 
+# === n8n multi-stage build (compile inside Docker) ===
+!turbo.json
+!tsconfig.json
+!packages/**
+
 # === runners image (docker/images/runners/Dockerfile + Dockerfile.distroless) ===
 !dist
 !dist/task-runner-javascript

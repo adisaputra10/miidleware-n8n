@@ -23,13 +23,40 @@ function adminOnly(req, res, next) {
 async function createN8NWorkflow(name, n8nProjectId, cookies) {
   const body = { name, nodes: [], connections: {}, settings: { executionOrder: 'v1' } };
   if (n8nProjectId) body.projectId = n8nProjectId;
-  const res = await axios.post(
-    `${N8N_BASE}/rest/workflows`,
-    body,
-    { headers: { Cookie: cookies, 'Content-Type': 'application/json' } }
-  );
-  const wf = res.data?.data ?? res.data;
-  return wf?.id ?? null; // returns the new workflow ID
+  try {
+    const res = await axios.post(
+      `${N8N_BASE}/rest/workflows`,
+      body,
+      { headers: { Cookie: cookies, 'Content-Type': 'application/json' } }
+    );
+    const wf = res.data?.data ?? res.data;
+    return wf?.id ?? null;
+  } catch (err) {
+    // If 401 and we used admin cookie, refresh admin session and retry once
+    if (err.response?.status === 401) {
+      console.warn('[createN8NWorkflow] 401 — refreshing admin session and retrying...');
+      const { setN8NCookies } = require('../server-state');
+      try {
+        const loginRes = await axios.post(
+          `${N8N_BASE}/rest/login`,
+          { emailOrLdapLoginId: process.env.N8N_ADMIN_EMAIL, password: process.env.N8N_ADMIN_PASSWORD },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        const freshCookies = (loginRes.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+        setN8NCookies(freshCookies);
+        const retry = await axios.post(
+          `${N8N_BASE}/rest/workflows`,
+          body,
+          { headers: { Cookie: freshCookies, 'Content-Type': 'application/json' } }
+        );
+        const wf = retry.data?.data ?? retry.data;
+        return wf?.id ?? null;
+      } catch (retryErr) {
+        throw retryErr;
+      }
+    }
+    throw err;
+  }
 }
 
 /** POST /api/v1/users then auto-accept invitation so user is Active (not Pending) */
@@ -268,7 +295,7 @@ router.post('/api/projects', adminOnly, async (req, res) => {
       });
     }
   } catch (err) {
-    console.error('[create-project] n8n workflow creation error:', err.response?.status, err.response?.data ?? err.message);
+    console.error('[create-project] n8n workflow creation error:', err.response?.status, JSON.stringify(err.response?.data) ?? err.message);
   }
 
   const userMsg = newUserCredentials
